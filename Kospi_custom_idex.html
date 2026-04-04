@@ -42,7 +42,7 @@ body{background:var(--bg0);color:var(--tx0);font-family:'Helvetica Neue',Helveti
 .edit-btn:hover{border-color:var(--blue);color:var(--blue)}
  
 /* LEGEND */
-.legend{padding:8px 24px;background:var(--bg2);border-bottom:1px solid var(--bd);display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.legend{padding:8px 24px;background:var(--bg2);border-bottom:1px solid var(--bd);display:flex;gap:14px;flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:90}
 .lg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--tx2)}
 .lg-dot{width:8px;height:8px;border-radius:50%}
  
@@ -51,7 +51,7 @@ body{background:var(--bg0);color:var(--tx0);font-family:'Helvetica Neue',Helveti
  
 /* TABLE */
 table{width:100%;border-collapse:collapse;font-size:12px}
-th{background:var(--bg2);color:var(--tx2);font-size:10px;font-weight:600;letter-spacing:0.06em;text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd2);position:sticky;top:86px;white-space:nowrap}
+th{background:var(--bg2);color:var(--tx2);font-size:10px;font-weight:600;letter-spacing:0.06em;text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd2);position:sticky;top:0;white-space:nowrap;z-index:10}
 th.center{text-align:center}
 td{padding:9px 10px;border-bottom:1px solid var(--bd);vertical-align:top;line-height:1.4}
 tr:hover td{background:var(--bg2)}
@@ -110,7 +110,7 @@ tr.row-hold td:first-child{border-left:3px solid var(--tx2)}
 .btn-save{font-size:11px;padding:6px 14px;border-radius:var(--r4);background:var(--green);border:none;color:#fff;cursor:pointer;font-weight:600}
  
 /* SUMMARY */
-.summary-row{background:var(--bg2);padding:10px 24px;border-bottom:1px solid var(--bd);display:flex;gap:20px;flex-wrap:wrap}
+.summary-row{background:var(--bg2);padding:10px 24px;border-bottom:1px solid var(--bd);display:flex;gap:20px;flex-wrap:wrap;position:sticky;top:0;z-index:91}
 .sr-item{font-size:11px}.sr-l{color:var(--tx2)}.sr-v{font-weight:700;margin-left:4px}
 .sr-v.g{color:var(--green)}.sr-v.r{color:var(--red)}.sr-v.a{color:var(--amber)}
 </style>
@@ -242,7 +242,6 @@ const DATA = [
     note:'구조조정 비용 2025년 4Q 일회성 완료. AI 데이터센터 칠러 2027 매출 1조 목표. VS 전장 5~6%대 OPM 안착.',
   },
   {
-    ticker:'068270',name:'셀트리온(참조)',sector:'',
     ticker:'005380',name:'현대자동차',sector:'자동차/PBV/SDV',
     price:465500,change:-2.1,signal:'watch',badge:'매수추적',
     entryPrice:275000,entryDate:'2026-02-10',
@@ -512,28 +511,71 @@ function saveEdit(){
 // ============================================================
 // CSV EXPORT
 // ============================================================
+function q(s){
+  s=String(s==null?'':s);
+  return (s.includes(',')||s.includes('"')||s.includes('\n'))?'"'+s.replace(/"/g,'""')+'"':s;
+}
 function exportCSV(){
-  const headers=['종목명','티커','섹터','신호','현재가','등락률','수익률','RSI','CMF','ATR','ADX','매수진입가','진입일','지지선','저항선','EPS26F','EPS27F','목표주가','특이사항'];
+  const HDR=['종목명','티커','섹터','신호','배지','현재가(원)','등락률(%)','현재수익률',
+    'RSI(14)','CMF(20)','ATR(14)','ADX(14)','매수진입가(원)','진입일','기준선_Kijun',
+    '지지선1','지지선2','지지선3','저항선1','저항선2','저항선3',
+    '매수조건1','매수조건2','매수조건3','매도손절조건1','매도손절조건2','매도손절조건3',
+    'EPS성장_26F','EPS성장_27F','목표주가(원)','특이사항_리스크'];
   const rows=DATA.map(d=>{
-    const pnl=pnlPct(d);
-    return [
-      d.name,d.ticker,d.sector,d.badge,d.price,d.change+'%',
-      pnl?pnl+'%':'미진입',d.rsi,d.cmf,d.atr,d.adx,
-      d.entryPrice||'',d.entryDate||'',
-      d.support.join('/'),d.resist.join('/'),
-      d.eps26F,d.eps27F,d.targetPrice,
-      '"'+d.note.replace(/"/g,"'")+'"'
-    ].join(',');
+    const pnl=d.entryPrice?((d.price-d.entryPrice)/d.entryPrice*100).toFixed(1)+'%':'미진입';
+    const sup=(d.support||[]).concat(['','','']);
+    const res=(d.resist||[]).concat(['','','']);
+    const bc=(d.buyConditions||[]).concat(['','','']);
+    const sc=(d.sellConditions||[]).concat(['','','']);
+    return [d.name,d.ticker,d.sector,d.signal,d.badge,d.price,d.change,pnl,
+      d.rsi,d.cmf,d.atr,d.adx,d.entryPrice||'',d.entryDate||'',d.kijun||'',
+      sup[0],sup[1],sup[2],res[0],res[1],res[2],
+      bc[0],bc[1],bc[2],sc[0],sc[1],sc[2],
+      d.eps26F,d.eps27F,d.targetPrice,d.note
+    ].map(q).join(',');
   });
-  const csv='\uFEFF'+[headers.join(','),...rows].join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download='kr_trading_strategy_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
+  const csv='\uFEFF'+[HDR.map(q).join(','),...rows].join('\r\n');
+  const fname='kr_trading_strategy_'+new Date().toISOString().slice(0,10)+'.csv';
+  // Blob 방식 (로컬 브라우저 기본)
+  try {
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  } catch(e) {
+    // Fallback: data URI (샌드박스 환경 대응)
+    const uri='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+    const a=document.createElement('a');
+    a.href=uri; a.download=fname;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+  }
 }
  
 // INIT
 renderTable();
+ 
+// ── Sticky header top 동적 계산 ──────────────────────────────
+function fixStickyTops(){
+  const hdr    = document.querySelector('.hdr');
+  const sumRow = document.getElementById('summary-row');
+  const legend = document.querySelector('.legend');
+  const hdrH   = hdr    ? hdr.getBoundingClientRect().height    : 0;
+  const sumH   = sumRow ? sumRow.getBoundingClientRect().height  : 0;
+  const legH   = legend ? legend.getBoundingClientRect().height  : 0;
+ 
+  // hdr: top=0 (already set in CSS)
+  if(sumRow) sumRow.style.top = hdrH + 'px';
+  if(legend) legend.style.top = (hdrH + sumH) + 'px';
+ 
+  const thTop = hdrH + sumH + legH;
+  document.querySelectorAll('th').forEach(th => th.style.top = thTop + 'px');
+}
+fixStickyTops();
+window.addEventListener('resize', fixStickyTops);
 </script>
 </body>
 </html>
