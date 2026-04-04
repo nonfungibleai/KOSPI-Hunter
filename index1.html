@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KR Quant Trading Dashboard — 30종목</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0d0d0f;--bg1:#141416;--bg2:#1a1a1d;--bg3:#222226;
+  --bd:#2a2a2e;--bd2:#38383e;
+  --tx0:#f0eee8;--tx1:#a8a69f;--tx2:#6a6864;
+  --green:#1fa870;--green2:#0d6644;--greenbg:rgba(31,168,112,0.10);
+  --red:#e04545;--red2:#8a2b2b;--redbg:rgba(224,69,69,0.10);
+  --amber:#d4820f;--amberbg:rgba(212,130,15,0.10);
+  --blue:#3a82d4;--bluebg:rgba(58,130,212,0.10);
+  --gray:#5a5a60;--graybg:rgba(90,90,96,0.12);
+  --r4:4px;--r8:8px;--r12:12px;
+}
+body{background:var(--bg0);color:var(--tx0);font-family:'SF Mono','Fira Mono',monospace;min-height:100vh;padding:0}
+ 
+/* HEADER */
+.hdr{padding:18px 24px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;background:rgba(13,13,15,0.96);backdrop-filter:blur(8px);z-index:100}
+.hdr-left{display:flex;align-items:center;gap:14px}
+.logo{font-size:11px;font-weight:600;letter-spacing:0.18em;color:var(--tx0)}
+.logo span{color:var(--green)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.85)}}
+.hdr-time{font-size:11px;color:var(--tx2);letter-spacing:0.06em}
+.sess-btns{display:flex;gap:4px}
+.sb{font-size:10px;padding:4px 10px;border-radius:var(--r4);border:1px solid var(--bd2);background:transparent;color:var(--tx2);cursor:pointer;letter-spacing:0.04em}
+.sb.active{background:var(--greenbg);border-color:var(--green2);color:var(--green)}
+.refresh-btn{font-size:10px;padding:4px 10px;border-radius:var(--r4);border:1px solid var(--bd2);background:transparent;color:var(--tx1);cursor:pointer;letter-spacing:0.04em}
+.refresh-btn:hover{border-color:var(--green2);color:var(--green)}
+ 
+/* FILTER BAR */
+.filter-bar{padding:10px 24px;border-bottom:1px solid var(--bd);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fb-label{font-size:10px;color:var(--tx2);letter-spacing:0.06em;margin-right:4px}
+.fb-btn{font-size:10px;padding:3px 10px;border-radius:var(--r4);border:1px solid var(--bd);background:transparent;color:var(--tx2);cursor:pointer}
+.fb-btn.active{background:var(--bg3);color:var(--tx0);border-color:var(--bd2)}
+.fb-btn.f-buy.active{background:var(--greenbg);border-color:var(--green2);color:var(--green)}
+.fb-btn.f-sell.active{background:var(--redbg);border-color:var(--red2);color:var(--red)}
+.fb-btn.f-watch.active{background:var(--amberbg);border-color:var(--amber);color:var(--amber)}
+ 
+/* SUMMARY STRIP */
+.summary-strip{padding:10px 24px;border-bottom:1px solid var(--bd);display:flex;gap:20px;flex-wrap:wrap}
+.ss-item{display:flex;flex-direction:column;gap:2px}
+.ss-label{font-size:9px;color:var(--tx2);letter-spacing:0.07em}
+.ss-val{font-size:13px;font-weight:600;letter-spacing:0.02em}
+.ss-val.g{color:var(--green)}.ss-val.r{color:var(--red)}.ss-val.a{color:var(--amber)}
+ 
+/* MAIN LAYOUT */
+.main{display:grid;grid-template-columns:1fr 380px;min-height:calc(100vh - 120px)}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+ 
+/* GRID PANEL */
+.grid-panel{padding:16px 24px;border-right:1px solid var(--bd);overflow-y:auto}
+.gp-label{font-size:9px;color:var(--tx2);letter-spacing:0.10em;margin-bottom:10px}
+.stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+ 
+/* STOCK CARD */
+.sc{background:var(--bg1);border:1px solid var(--bd);border-radius:var(--r8);padding:12px;cursor:pointer;transition:border-color 0.12s,background 0.12s;position:relative;overflow:hidden}
+.sc:hover{border-color:var(--bd2);background:var(--bg2)}
+.sc.sel{border-color:var(--blue);background:var(--bg2)}
+.sc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px}
+.sc.sig-buy::before{background:var(--green)}
+.sc.sig-sell::before{background:var(--red)}
+.sc.sig-watch::before{background:var(--amber)}
+.sc.sig-hold::before{background:var(--gray)}
+.sc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.sc-info .sc-code{font-size:9px;color:var(--tx2);letter-spacing:0.06em;margin-bottom:1px}
+.sc-info .sc-name{font-size:12px;font-weight:600;color:var(--tx0);line-height:1.25}
+.sc-badge{font-size:9px;font-weight:600;padding:2px 7px;border-radius:3px;letter-spacing:0.04em;white-space:nowrap}
+.bg-buy{background:var(--greenbg);color:var(--green);border:1px solid var(--green2)}
+.bg-sell{background:var(--redbg);color:var(--red);border:1px solid var(--red2)}
+.bg-watch{background:var(--amberbg);color:var(--amber);border:1px solid #6b4108}
+.bg-hold{background:var(--graybg);color:#888;border:1px solid #444}
+.bg-track{background:var(--bluebg);color:var(--blue);border:1px solid #1e4d8a}
+.sc-price-row{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
+.sc-price{font-size:16px;font-weight:600;letter-spacing:-0.01em}
+.sc-chg{font-size:11px;font-weight:500}
+.sc-chg.pos{color:var(--green)}.sc-chg.neg{color:var(--red)}
+.sc-bottom{display:flex;justify-content:space-between;align-items:center}
+.sc-sector{font-size:9px;color:var(--tx2)}
+.sc-pnl{font-size:11px;font-weight:600}
+.sc-pnl.pos{color:var(--green)}.sc-pnl.neg{color:var(--red)}.sc-pnl.na{color:var(--tx2)}
+.sc-spark{width:100%;height:28px;margin-top:6px}
+ 
+/* DETAIL PANEL */
+.detail-panel{background:var(--bg1);overflow-y:auto;position:sticky;top:56px;height:calc(100vh - 56px)}
+.detail-panel.empty{display:flex;align-items:center;justify-content:center}
+.dp-placeholder{text-align:center;color:var(--tx2);font-size:11px;line-height:2}
+.dp-inner{padding:0}
+.dp-hdr{padding:14px 16px 0;border-bottom:1px solid var(--bd)}
+.dp-close{float:right;font-size:10px;color:var(--tx2);cursor:pointer;border:1px solid var(--bd);background:transparent;border-radius:3px;padding:2px 7px;margin-top:2px}
+.dp-title{font-size:14px;font-weight:600;color:var(--tx0);margin-bottom:2px}
+.dp-sub{font-size:10px;color:var(--tx2);margin-bottom:10px}
+.dp-tabs{display:flex;gap:2px;padding:8px 16px 0;border-bottom:1px solid var(--bd)}
+.dt{font-size:10px;padding:5px 10px;border-radius:var(--r4) var(--r4) 0 0;cursor:pointer;color:var(--tx2);background:transparent;border:none;border-bottom:2px solid transparent;letter-spacing:0.04em}
+.dt.active{color:var(--tx0);border-bottom-color:var(--green)}
+.dp-body{padding:14px 16px}
+.dp-section{margin-bottom:14px}
+.dps-label{font-size:9px;color:var(--tx2);letter-spacing:0.08em;margin-bottom:6px}
+ 
+/* VERDICT */
+.verdict-box{border:1px solid var(--bd2);border-radius:var(--r8);padding:12px;margin-bottom:12px}
+.vb-action{font-size:16px;font-weight:700;margin-bottom:4px}
+.vb-action.buy{color:var(--green)}.vb-action.sell{color:var(--red)}.vb-action.watch{color:var(--amber)}.vb-action.hold{color:var(--gray)}
+.vb-reason{font-size:11px;color:var(--tx1);line-height:1.6}
+.vb-levels{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+.vbl{font-size:10px}.vbl-l{color:var(--tx2)}.vbl-v{font-weight:600;margin-left:3px}
+.vbl-v.r{color:var(--red)}.vbl-v.g{color:var(--green)}
+ 
+/* METRICS */
+.dp-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.dm{background:var(--bg2);border-radius:var(--r4);padding:8px 10px}
+.dm-l{font-size:9px;color:var(--tx2);letter-spacing:0.04em;margin-bottom:3px}
+.dm-v{font-size:13px;font-weight:600;color:var(--tx0)}
+.dm-s{font-size:9px;color:var(--tx2);margin-top:1px}
+ 
+/* INDICATORS TABLE */
+.ind-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.ind-tbl th{font-size:9px;color:var(--tx2);text-align:left;padding:3px 6px 5px;border-bottom:1px solid var(--bd);letter-spacing:0.05em;font-weight:400}
+.ind-tbl td{padding:5px 6px;border-bottom:1px solid var(--bd);vertical-align:middle;color:var(--tx0)}
+.ind-tbl tr:last-child td{border-bottom:none}
+.bar-w{width:60px;height:4px;background:var(--bg3);border-radius:2px;display:inline-block;vertical-align:middle;margin-left:4px}
+.bar-f{height:100%;border-radius:2px}
+.bf-g{background:var(--green)}.bf-r{background:var(--red)}.bf-n{background:var(--gray)}
+ 
+/* NEWS */
+.news-item{padding:8px 0;border-bottom:1px solid var(--bd)}
+.news-item:last-child{border-bottom:none}
+.ni-date{font-size:9px;color:var(--tx2);margin-bottom:2px}
+.ni-title{font-size:11px;color:var(--tx0);line-height:1.4;margin-bottom:3px}
+.ni-tag{font-size:9px;padding:1px 5px;border-radius:2px}
+.t-pos{background:var(--greenbg);color:var(--green)}.t-neg{background:var(--redbg);color:var(--red)}.t-neu{background:var(--graybg);color:#888}
+ 
+/* CONSENSUS TABLE */
+.cons-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.cons-tbl th{font-size:9px;color:var(--tx2);text-align:right;padding:3px 6px 5px;border-bottom:1px solid var(--bd);letter-spacing:0.04em;font-weight:400}
+.cons-tbl th:first-child{text-align:left}
+.cons-tbl td{padding:5px 6px;border-bottom:1px solid var(--bd);text-align:right}
+.cons-tbl td:first-child{text-align:left;color:var(--tx2)}
+.cons-tbl tr:last-child td{border-bottom:none}
+.cu{color:var(--green)}.cd{color:var(--red)}
+ 
+/* PNL */
+.pnl-wrap{height:120px;position:relative;margin-bottom:8px}
+.pnl-label{font-size:10px;color:var(--tx2);text-align:center}
+ 
+/* LEVEL BAR */
+.lvl-bar{position:relative;height:24px;background:var(--bg3);border-radius:3px;margin-bottom:20px}
+.lvl-marker{position:absolute;top:0;bottom:0;width:1px}
+.lvl-marker-label{position:absolute;top:26px;font-size:9px;transform:translateX(-50%);white-space:nowrap}
+ 
+/* CHART HEIGHT */
+.ch-wrap{height:140px;position:relative;margin-top:10px}
+ 
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg0)}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+ 
+@media(max-width:900px){
+  .detail-panel{position:relative;height:auto;border-top:1px solid var(--bd)}
+  .main{grid-template-columns:1fr}
+  .grid-panel{border-right:none}
+}
+</style>
+</head>
+<body>
+ 
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="live-dot"></div>
+    <div class="logo">KR<span>QUANT</span> · 30종목</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div class="sess-btns">
+      <button class="sb active" id="sb-am" onclick="setSess('AM')">오전 08:10</button>
+      <button class="sb" id="sb-pm" onclick="setSess('PM')">오후 15:00</button>
+    </div>
+    <span class="hdr-time" id="clock">--:--:--</span>
+    <button class="refresh-btn" onclick="refresh()">↻ 새로고침</button>
+  </div>
+</div>
+ 
+<div class="filter-bar">
+  <span class="fb-label">필터:</span>
+  <button class="fb-btn active" onclick="setFilter('ALL')">전체</button>
+  <button class="fb-btn f-buy" onclick="setFilter('buy')">매수</button>
+  <button class="fb-btn f-watch" onclick="setFilter('watch')">매수추적</button>
+  <button class="fb-btn f-sell" onclick="setFilter('hold')">보유/관망</button>
+</div>
+ 
+<div class="summary-strip" id="summary-strip"></div>
+ 
+<div class="main">
+  <div class="grid-panel">
+    <div class="gp-label">종목 현황 — 클릭하면 상세 분석</div>
+    <div class="stock-grid" id="stock-grid"></div>
+  </div>
+  <div class="detail-panel empty" id="detail-panel">
+    <div class="dp-placeholder">종목을 클릭하면<br>상세 분석이 표시됩니다</div>
+  </div>
+</div>
+ 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ============================================================
+// STOCK DATA — 30종목 (값만 수정하면 전체 반영)
+// ============================================================
+const STOCKS = [
+// ── 기존 7종목 ──────────────────────────────────────────────
+{
+  ticker:'005380',name:'현대자동차',sector:'자동차',
+  price:465500,change:-2.1,signal:'watch',badge:'매수추적',
+  entryPrice:275000,entryDate:'2026-02-10',
+  atr:10767,rsi:42.3,cmf:-0.05,adx:22,
+  kijun:454084,support:[454084,440000,405000],resist:[480000,495000,510000],
+  verdict:'구름대 상단 지지 구간. CMF 소폭 음전환이나 OBV 고점 유지. RSI 40 부근 지지 확인 시 진입 검토.',
+  action:'매수추적',
+  metrics:[{l:'PBR',v:'0.42x',s:'저평가'},{l:'FWD PER',v:'8.2x',s:'2026E'},{l:'EPS성장',v:'+11.4%',s:'2026F High'},{l:'ATR(14)',v:'10,767',s:'변동성 高'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름 상단',sig:'bull',sc:62,d:'주가 구름대 상단 근접. 선행스팬 폭 축소 중.'},
+    {n:'CMF(20)',v:'-0.05',sig:'bear',sc:35,d:'소폭 음전환. 대규모 이탈 아닌 차익실현 수준.'},
+    {n:'RSI(14)',v:'42.3',sig:'neutral',sc:42,d:'중립-과매도 경계. 40 지지 시 반등 기대.'},
+    {n:'ATR(14)',v:'10,767',sig:'neutral',sc:50,d:'12개월 평균 대비 높음. 손절폭 넓게 유지.'},
+    {n:'Kijun-sen',v:'454,084',sig:'neutral',sc:48,d:'현재가와 근접. 지지 확인 후 매수 고려.'}
+  ],
+  consensus:[{y:'2025A',s:'186.3조',o:'11.5조',e:'-21.7%'},{y:'2026F',s:'189.5조',o:'12.8조',e:'+11.4%'},{y:'2027F',s:'202.5조',o:'14.3조',e:'+10.5%'},{y:'2028F',s:'215.0조',o:'15.5조',e:'+8.9%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[11.5,12.8,14.3,15.5]},
+  news:[
+    {d:'2026-04-03',t:'2025년 영업이익 11.47조원 — 전년比 19.5% 감소. 관세 영향.',imp:'neg'},
+    {d:'2026-03-28',t:'2026 가이던스 영업이익률 6.3~7.3% 보수적 제시.',imp:'neu'},
+    {d:'2026-03-15',t:'밸류업 프로그램 지속. PBR 1배 달성 목표 재확인.',imp:'pos'},
+    {d:'2026-02-20',t:'로보틱스 모멘텀 결합 폭발 시세. 3월 495,000원 고점.',imp:'pos'}
+  ],
+  pnl:{entry:275000,dates:['02/10','02/20','03/01','03/10','03/20','04/01','04/04'],prices:[275000,310000,365000,430000,495000,480000,465500]}
+},
+{
+  ticker:'373220',name:'LG에너지솔루션',sector:'2차전지/ESS',
+  price:408000,change:+1.8,signal:'buy',badge:'매수',
+  entryPrice:370000,entryDate:'2026-03-15',
+  atr:8200,rsi:59.7,cmf:0.08,adx:31,
+  kijun:399115,support:[399115,388000,365000],resist:[420000,440000,460000],
+  verdict:'200일선 위 안착. 골든크로스. CMF 양전환. ESS 수익 본격화. 테슬라 43억달러 LFP 계약 확정.',
+  action:'매수',
+  metrics:[{l:'FWD PER',v:'102x',s:'성장 프리미엄'},{l:'ESS비중(F)',v:'30~36%',s:'2026 목표'},{l:'AMPC수혜',v:'1.4조',s:'2026 ESS'},{l:'목표주가',v:'487,100',s:'컨센서스'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:72,d:'구름대 위. 전환선>기준선 골든크로스.'},
+    {n:'CMF(20)',v:'0.08',sig:'bull',sc:65,d:'기관 자금 유입 확인. 양수 유지.'},
+    {n:'RSI(14)',v:'59.7',sig:'bull',sc:60,d:'중립-강세 구간. 추가 상승 여력.'},
+    {n:'Williams%R',v:'-0.75',sig:'bear',sc:25,d:'단기 과매수. 일시 조정 가능.'},
+    {n:'ATR(14)',v:'8,200',sig:'neutral',sc:50,d:'변동성 안정. 매수 기회 구간.'}
+  ],
+  consensus:[{y:'2025A',s:'23.7조',o:'1.3조',e:'+133.9%'},{y:'2026F',s:'28.5조',o:'2.8조',e:'+115%'},{y:'2027F',s:'34.0조',o:'4.1조',e:'+46%'},{y:'2028F',s:'40.0조',o:'5.5조',e:'+34%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[1.3,2.8,4.1,5.5]},
+  news:[
+    {d:'2026-04-02',t:'테슬라 43억달러 LFP 공급계약 공식 확정.',imp:'pos'},
+    {d:'2026-03-28',t:'2026 ESS 매출 157% 성장 전망. 목표주가 52만원.',imp:'pos'},
+    {d:'2026-03-05',t:'4Q25 영업적자 1,220억. ESS 라인 전환 초기 비용.',imp:'neg'},
+    {d:'2026-02-15',t:'넥스트스타 에너지 100% 자회사화. 경영권 확보.',imp:'pos'}
+  ],
+  pnl:{entry:370000,dates:['03/15','03/20','03/25','04/01','04/04'],prices:[370000,385000,395000,402000,408000]}
+},
+{
+  ticker:'034020',name:'두산에너빌리티',sector:'원전/에너지',
+  price:93600,change:-3.2,signal:'watch',badge:'관망',
+  entryPrice:null,entryDate:null,
+  atr:9200,rsi:50.5,cmf:-0.02,adx:18,
+  kijun:97257,support:[90600,75000],resist:[97257,99608,112100],
+  verdict:'20일선 아래 하향. MACD 매도 시그널. 90,600원 지지 확인 필수. 97,257원 거래량 돌파 시 재진입.',
+  action:'관망',
+  metrics:[{l:'EPS성장(26F)',v:'+489%',s:'체코 원전'},{l:'ADX',v:'18',s:'추세 약'},{l:'지지선',v:'90,600',s:'핵심'},{l:'저항선',v:'97,257',s:'1차 목표'}],
+  indicators:[
+    {n:'이동평균',v:'역배열',sig:'bear',sc:32,d:'20일선 이탈. 단기 하락 추세.'},
+    {n:'MACD',v:'매도 시그널',sig:'bear',sc:28,d:'3개월 데드크로스. 시그널선 하방.'},
+    {n:'RSI(14)',v:'50.5',sig:'neutral',sc:50,d:'중립. 방향성 탐색 중.'},
+    {n:'ADX(14)',v:'18',sig:'neutral',sc:40,d:'추세 강도 약. 명확한 방향 미정.'},
+    {n:'거래량',v:'평균 이하',sig:'bear',sc:35,d:'수급 회복 미확인. 돌파 시 거래량 필수.'}
+  ],
+  consensus:[{y:'2025E',s:'17.06조',o:'0.76조',e:'-54.1%'},{y:'2026F',s:'17.31조',o:'1.12조',e:'+489%'},{y:'2027F',s:'19.63조',o:'1.59조',e:'+67%'},{y:'2028F',s:'22.40조',o:'1.95조',e:'+25%'}],
+  epsChart:{l:['25E','26F','27F','28F'],v:[0.76,1.12,1.59,1.95]},
+  news:[
+    {d:'2026-04-02',t:'체코 원전 주기기 수주 확정 기대. 2026 EPS +489%.',imp:'pos'},
+    {d:'2026-03-25',t:'112,100원 고점 피봇 탑 후 조정. 20일선 이탈.',imp:'neg'},
+    {d:'2026-02-25',t:'2040년 수주잔고 48조 예상. AI 전력인프라 수요.',imp:'pos'}
+  ],
+  pnl:{entry:null,dates:[],prices:[]}
+},
+{
+  ticker:'105560',name:'KB금융지주',sector:'금융/은행',
+  price:145500,change:-0.8,signal:'buy',badge:'매수',
+  entryPrice:145500,entryDate:'2026-04-03',
+  atr:2621,rsi:53.9,cmf:0.12,adx:28,
+  kijun:145833,support:[145166,143800,138000],resist:[158000,165000,170000],
+  verdict:'피봇 S1(145,166) 지지 시도. CMF 양수 유지. 2026H1 1.2조 자사주 소각 예정. 진입 적기.',
+  action:'매수',
+  metrics:[{l:'CET1비율',v:'>13.5%',s:'밸류업 기준'},{l:'주주환원율',v:'>50%',s:'업계 최초'},{l:'ATR(14)',v:'2,621',s:'안정'},{l:'자사주소각',v:'1.2조',s:'26H1'}],
+  indicators:[
+    {n:'CMF(20)',v:'0.12',sig:'bull',sc:68,d:'기관/외국인 매집. 핵심 추적 지표.'},
+    {n:'RSI(14)',v:'53.9',sig:'neutral',sc:54,d:'중립. 다이버전스 미형성.'},
+    {n:'피봇 S1',v:'145,166',sig:'neutral',sc:50,d:'1차 지지선 공방 중.'},
+    {n:'ATR(14)',v:'2,621',sig:'neutral',sc:55,d:'변동성 안정. 동적 손절 기준.'},
+    {n:'외국인수급',v:'상관 0.54',sig:'bull',sc:62,d:'외국인 수급 동조화 높음.'}
+  ],
+  consensus:[{y:'2025F',s:'',o:'',e:'안정적'},{y:'2026F',s:'',o:'',e:'+15%'},{y:'2027F',s:'',o:'',e:'+12%'},{y:'2028F',s:'',o:'',e:'+10%'}],
+  epsChart:{l:['24A','25F','26F','27F'],v:[4.2,4.8,5.5,6.2]},
+  news:[
+    {d:'2026-04-03',t:'2026H1 1.2조 자사주 매입/소각. 강력한 수급 지지.',imp:'pos'},
+    {d:'2026-03-12',t:'CMF 음전환으로 158,000원 매도. 14.5% 수익 실현.',imp:'pos'},
+    {d:'2026-03-05',t:'CET1 13.5% 초과. 추가 주주환원 여력.',imp:'pos'}
+  ],
+  pnl:{entry:145500,dates:['04/03'],prices:[145500]}
+},
+{
+  ticker:'012450',name:'한화에어로스페이스',sector:'방산/우주',
+  price:1417000,change:+6.3,signal:'buy',badge:'보유',
+  entryPrice:1330000,entryDate:'2026-03-31',
+  atr:29428,rsi:61.2,cmf:0.12,adx:38,
+  kijun:1344428,support:[1344428,1300000,1250000],resist:[1500000,1600000,1650000],
+  verdict:'CMF 0.12 견조. 구름대 상방 정배열. 기준선(1,344,428) 지지. 목표가 155~165만. 보유 유지.',
+  action:'보유',
+  metrics:[{l:'수주잔고',v:'31조',s:'2025년말'},{l:'ROE(26F)',v:'23.5%',s:''},{l:'OPM(26F)',v:'14.3%',s:''},{l:'목표주가',v:'155~165만',s:''}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:82,d:'R²=0.84. 기준선 지지 반등 70%+.'},
+    {n:'CMF(20)',v:'0.12',sig:'bull',sc:75,d:'스마트머니 유입 지속.'},
+    {n:'RSI(14)',v:'61.2',sig:'bull',sc:61,d:'강세. 추격 유의하나 추세 지속.'},
+    {n:'ATR(14)',v:'29,428',sig:'neutral',sc:50,d:'일변동 약 2%.'},
+    {n:'Kijun-sen',v:'1,344,428',sig:'bull',sc:72,d:'핵심 지지. 이격 시 매수.'}
+  ],
+  consensus:[{y:'2025E',s:'26.61조',o:'3.03조',e:'-39%'},{y:'2026F',s:'31.35조',o:'4.47조',e:'+75%'},{y:'2027F',s:'34.38조',o:'5.44조',e:'+24%'},{y:'2028F',s:'38.50조',o:'6.25조',e:'+19%'}],
+  epsChart:{l:['25E','26F','27F','28F'],v:[3.03,4.47,5.44,6.25]},
+  news:[
+    {d:'2026-04-02',t:'고점 부근 매물 소화 구간. CMF 견조.',imp:'pos'},
+    {d:'2026-03-25',t:'루마니아 레드백 수출 파이프라인 구체화.',imp:'pos'},
+    {d:'2026-03-15',t:'폴란드 K9 EC2 실행계약. 2026~2027 매출 견인.',imp:'pos'}
+  ],
+  pnl:{entry:1330000,dates:['03/31','04/01','04/02','04/03','04/04'],prices:[1330000,1368000,1395000,1417000,1417000]}
+},
+{
+  ticker:'000660',name:'SK하이닉스',sector:'반도체/HBM',
+  price:876000,change:-1.4,signal:'buy',badge:'매수',
+  entryPrice:876000,entryDate:'2026-04-02',
+  atr:20642,rsi:51.7,cmf:0.08,adx:35,
+  kijun:883900,support:[860000,835000,800000],resist:[920000,960000,1000000],
+  verdict:'기준선(883,900) 터치 반등 시도. CMF 양수. 1Q26 영업이익 37조 기대. ATR 손절 835,000 유지.',
+  action:'매수',
+  metrics:[{l:'EPS(26F)',v:'184,469',s:'+213%'},{l:'PER(26F)',v:'5.8x',s:'극저평가'},{l:'OPM(25A)',v:'48.6%',s:'사상 최대'},{l:'목표주가',v:'130~160만',s:''}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:76,d:'정배열. 구름 두꺼워 하방 경직.'},
+    {n:'CMF(20)',v:'0.08',sig:'bull',sc:65,d:'1.2조 투매에도 양수 유지.'},
+    {n:'RSI(14)',v:'51.7',sig:'neutral',sc:52,d:'중립. 부담 없는 진입 구간.'},
+    {n:'ATR(14)',v:'20,642',sig:'neutral',sc:50,d:'변동성 수렴. 분출 임박.'},
+    {n:'Williams%R',v:'-4.1',sig:'bear',sc:20,d:'단기 과열. 강추세 지속 가능.'}
+  ],
+  consensus:[{y:'2025A',s:'97.15조',o:'47.21조',e:'+100%+'},{y:'2026F',s:'230.2조',o:'170조',e:'+213%'},{y:'2027F',s:'271.0조',o:'202조',e:'+16%'},{y:'2028F',s:'291.8조',o:'215조',e:'+7%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[47.21,170,202,215]},
+  news:[
+    {d:'2026-04-02',t:'1분기 영업이익만 37조원 전망. 목표가 상향 지속.',imp:'pos'},
+    {d:'2026-03-24',t:'외국인 1.2조 투매. 933,000원 손절 실행.',imp:'neg'},
+    {d:'2026-03-10',t:'노무라 2027 영업이익 365조 전망.',imp:'pos'}
+  ],
+  pnl:{entry:876000,dates:['04/02','04/03','04/04'],prices:[876000,879000,876000]}
+},
+{
+  ticker:'277810',name:'레인보우로보틱스',sector:'로봇/AI',
+  price:143000,change:+2.3,signal:'watch',badge:'매수추적',
+  entryPrice:null,entryDate:null,
+  atr:7200,rsi:55.8,cmf:0.05,adx:24,
+  kijun:138500,support:[138500,132000,125000],resist:[155000,165000,180000],
+  verdict:'RSI 50~60 안정. CMF 소폭 양전환. 삼성전자 최대주주 이후 펀더멘털 강화. 기준선 지지 확인 후 분할 매수.',
+  action:'매수추적',
+  metrics:[{l:'ROE(26F)',v:'21.9%',s:''},{l:'PER(26F)',v:'78.9x',s:'성장 프리미엄'},{l:'매출(26F)',v:'1,020억',s:'+183%'},{l:'삼성',v:'최대주주',s:'전략적 투자'}],
+  indicators:[
+    {n:'RSI(14)',v:'55.8',sig:'bull',sc:56,d:'50~60 안정. 매수 세력 유입 확인 필요.'},
+    {n:'CMF(20)',v:'0.05',sig:'neutral',sc:52,d:'소폭 양전환. 대규모 미확인.'},
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:65,d:'고성장주 추세 이탈 모니터링.'},
+    {n:'ATR(14)',v:'7,200',sig:'neutral',sc:50,d:'변동성 관리. 분할 매수 권장.'},
+    {n:'삼성 시너지',v:'최대주주',sig:'bull',sc:80,d:'계열사 수주 및 자본력 확보.'}
+  ],
+  consensus:[{y:'2025E',s:'360억',o:'50억',e:'흑전'},{y:'2026F',s:'1,020억',o:'290억',e:'+1,714%'},{y:'2027F',s:'2,500억',o:'750억',e:'+159%'},{y:'2028F',s:'4,200억',o:'1,400억',e:'+87%'}],
+  epsChart:{l:['25E','26F','27F','28F'],v:[50,290,750,1400]},
+  news:[
+    {d:'2026-04-04',t:'CJ대한통운 AI 휴머노이드 물류로봇 공동개발 협력.',imp:'pos'},
+    {d:'2026-03-20',t:'2025년 매출 76.4% 급증. 재고자산 141.8% 증가.',imp:'pos'},
+    {d:'2026-02-22',t:'이재용 회장 휴머노이드 삼성의 미래 공식 선언.',imp:'pos'}
+  ],
+  pnl:{entry:null,dates:[],prices:[]}
+},
+// ── 추가 7종목 ──────────────────────────────────────────────
+{
+  ticker:'068270',name:'셀트리온',sector:'바이오/바이오시밀러',
+  price:185000,change:-1.2,signal:'buy',badge:'분할매수',
+  entryPrice:185000,entryDate:'2026-04-01',
+  atr:3607,rsi:42.0,cmf:0.06,adx:26,
+  kijun:182000,support:[180000,175000,170000],resist:[195000,210000,240000],
+  verdict:'피봇 S1(180,000~185,000) 지지 확인. RSI 중립 이하 하방 경직. 짐펜트라·유플라이마 신제품 비중 54%. 2차 매집 구간.',
+  action:'분할매수',
+  metrics:[{l:'OPM(25A)',v:'28.1%',s:'+14.3%p yoy'},{l:'매출(26F)',v:'5.05조',s:'+21.2%'},{l:'PER(26F)',v:'25~30x',s:'저평가'},{l:'목표주가',v:'240,000',s:'DS투자증권'}],
+  indicators:[
+    {n:'일목(일봉)',v:'적극매도',sig:'bear',sc:30,d:'단기 10/20일선 하회. 숨 고르기 국면.'},
+    {n:'일목(월봉)',v:'강력매수',sig:'bull',sc:78,d:'장기 추세 훼손 없음. 중장기 우상향.'},
+    {n:'RSI(14)',v:'42.0',sig:'neutral',sc:42,d:'30 이하 접근 시 역사적 매수 타점.'},
+    {n:'ATR(14)',v:'3,607',sig:'neutral',sc:50,d:'변동성 응축. 에너지 응집 중.'},
+    {n:'피봇 S1',v:'180,000',sig:'bull',sc:65,d:'강력 매수 대기 구간.'}
+  ],
+  consensus:[{y:'2025A',s:'4.16조',o:'1.17조',e:'+137.5%'},{y:'2026F',s:'5.05조',o:'1.74조',e:'+48.9%'},{y:'2027F',s:'5.80조',o:'2.15조',e:'+23.6%'},{y:'2028F',s:'6.50조',o:'2.50조',e:'+16.3%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[1.17,1.74,2.15,2.50]},
+  news:[
+    {d:'2026-04-04',t:'1Q26 실적 우려 선반영. 피봇 S1 분할 매수 시점.',imp:'pos'},
+    {d:'2026-03-10',t:'짐펜트라 미국 3대 PBM 등재 완료. 처방 확대 가속.',imp:'pos'},
+    {d:'2026-02-15',t:'스테키마 2026년 유럽+북미 매출 3,500억 기대.',imp:'pos'},
+    {d:'2026-01-05',t:'삼성증권·NH증권 목표주가 잇달아 상향. 4Q 서프.',imp:'pos'}
+  ],
+  pnl:{entry:185000,dates:['04/01','04/02','04/03','04/04'],prices:[185000,184000,183500,185000]}
+},
+{
+  ticker:'005490',name:'POSCO홀딩스',sector:'철강/리튬/소재',
+  price:335000,change:+1.5,signal:'buy',badge:'매수',
+  entryPrice:310000,entryDate:'2026-01-22',
+  atr:15000,rsi:58.0,cmf:0.22,adx:32,
+  kijun:312000,support:[312000,300000,285000],resist:[350000,375000,400000],
+  verdict:'CMF 0.22 — 2026년 최고 수준 자금 유입. OBV 전고점 돌파. 리튬 가격 반등 + EPS 243% 성장 컨센. 기준선 지지 확인 후 보유.',
+  action:'보유',
+  metrics:[{l:'EPS(26F)',v:'27,752',s:'+243%'},{l:'PER(26F)',v:'12.5x',s:'저평가'},{l:'리튬공장',v:'아르헨1공장',s:'본격 가동'},{l:'목표주가',v:'380,000',s:'컨센서스'}],
+  indicators:[
+    {n:'일목 구름대',v:'양운 상방',sig:'bull',sc:80,d:'후행스팬 구름대 상향 돌파. 중장기 상승.'},
+    {n:'CMF(20)',v:'0.22',sig:'bull',sc:82,d:'2026년 최고 수준. 외국인+기관 동반 매수.'},
+    {n:'RSI(14)',v:'58.0',sig:'bull',sc:58,d:'강세 진입 중. 추가 상승 여력.'},
+    {n:'OBV',v:'전고점 돌파',sig:'bull',sc:75,d:'매집 단계 확인.'},
+    {n:'Kijun-sen',v:'312,000',sig:'bull',sc:70,d:'핵심 지지. 눌림목 매수 구간.'}
+  ],
+  consensus:[{y:'2025잠정',s:'69.1조',o:'1.83조',e:'-16%'},{y:'2026F',s:'71.5조',o:'3.29조',e:'+243%'},{y:'2027F',s:'74.1조',o:'3.71조',e:'+18%'},{y:'2028F',s:'78.0조',o:'4.17조',e:'+12%'}],
+  epsChart:{l:['25잠','26F','27F','28F'],v:[1.83,3.29,3.71,4.17]},
+  news:[
+    {d:'2026-03-25',t:'아르헨티나 리튬 1공장 본격 가동. 수익 기여 시작.',imp:'pos'},
+    {d:'2026-03-10',t:'리튬가 급등 + CMF 0.25 양전환. 강력 매수 신호.',imp:'pos'},
+    {d:'2026-01-29',t:'2025년 영업이익 15% 감소. 바닥 통과 공식화.',imp:'neu'},
+    {d:'2025-08-14',t:'신안산선 사고 여파 POSCO이앤씨 ATR 손절 실행.',imp:'neg'}
+  ],
+  pnl:{entry:310000,dates:['01/22','02/01','02/15','03/01','03/15','04/01','04/04'],prices:[310000,322000,335000,345000,355000,360000,335000]}
+},
+{
+  ticker:'066570',name:'LG전자',sector:'가전/전장/AI냉각',
+  price:108800,change:+0.5,signal:'buy',badge:'매수',
+  entryPrice:101200,entryDate:'2026-02-05',
+  atr:4500,rsi:52.0,cmf:0.10,adx:30,
+  kijun:107300,support:[107300,103000,98000],resist:[115000,120000,130000],
+  verdict:'구조조정 비용 소멸. RSI 다이버전스 발생 후 기준선 안착. CMF 양수. 칠러(AI냉각) 2027 매출 1조 목표.',
+  action:'매수',
+  metrics:[{l:'매출(25A)',v:'89.2조',s:'역대 최대'},{l:'EPS(26F)',v:'14,050',s:'+354%'},{l:'ROE(26F)',v:'8.4%',s:''},{l:'목표주가',v:'130,000',s:'IBK'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 돌파',sig:'bull',sc:72,d:'구름대 상단 돌파 후 기준선 지지 확인.'},
+    {n:'CMF(20)',v:'0.10',sig:'bull',sc:65,d:'2024년 이후 최강 자금 유입.'},
+    {n:'RSI(14)',v:'52.0',sig:'neutral',sc:52,d:'중립. 신규 매수 부담 없음.'},
+    {n:'ATR(14)',v:'4,500',sig:'neutral',sc:50,d:'변동성 안정화. 에너지 응집.'},
+    {n:'60일 MA',v:'우상향',sig:'bull',sc:68,d:'중기 골든크로스 임박.'}
+  ],
+  consensus:[{y:'2025A',s:'89.2조',o:'2.48조',e:'-27.5%'},{y:'2026F',s:'94.0조',o:'3.53조',e:'+42.3%'},{y:'2027F',s:'94.7조',o:'3.87조',e:'+9.6%'},{y:'2028F',s:'98.5조',o:'4.11조',e:'+6.2%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[2.48,3.53,3.87,4.11]},
+  news:[
+    {d:'2026-04-01',t:'기준선 지지 확인. 칠러 모멘텀 보유 유지.',imp:'pos'},
+    {d:'2026-02-05',t:'구조조정 비용 소멸 + RSI 다이버전스 매수 진입.',imp:'pos'},
+    {d:'2026-01-30',t:'2025 4Q 희망퇴직 비용 3,000억 일회성 처리 완료.',imp:'pos'},
+    {d:'2025-11-20',t:'CMF 음수 전환 관망 — 조건 미충족으로 진입 보류.',imp:'neu'}
+  ],
+  pnl:{entry:101200,dates:['02/05','02/15','03/01','03/15','04/01','04/04'],prices:[101200,106000,112000,118000,120500,108800]}
+},
+{
+  ticker:'006400',name:'삼성SDI',sector:'2차전지/ESS/전고체',
+  price:438500,change:+0.2,signal:'buy',badge:'매수',
+  entryPrice:398000,entryDate:'2026-03-12',
+  atr:12500,rsi:55.0,cmf:0.15,adx:33,
+  kijun:415000,support:[415000,400000,380000],resist:[480000,520000,660000],
+  verdict:'CMF 0.15 최근 최고. 구름대 상방. 후행스팬 구름 돌파. 1분기 실적 개선 및 인터배터리 전고체 공개 모멘텀.',
+  action:'매수',
+  metrics:[{l:'EPS(27F)',v:'25,218',sig:'',s:'+213%'},{l:'PER(27F)',v:'6.3x',s:'극저평가'},{l:'삼성디스플레이',v:'지분 15.2%',s:'비영업가치'},{l:'목표주가',v:'480,000',s:'1차 목표'}],
+  metrics:[{l:'EPS(27F)',v:'25,218',s:'+213%'},{l:'PER(27F)',v:'6.3x',s:'극저평가'},{l:'삼성디스플레이지분',v:'64조',s:'비영업가치'},{l:'목표주가',v:'480,000',s:'1차'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:78,d:'후행스팬 구름 돌파. 강력 매수 신호.'},
+    {n:'CMF(20)',v:'0.15',sig:'bull',sc:72,d:'2027 실적 겨냥 대형 기관 편입 중.'},
+    {n:'RSI(14)',v:'55.0',sig:'bull',sc:55,d:'중립-강세. 추가 상승 여력.'},
+    {n:'ATR(14)',v:'12,500',sig:'neutral',sc:50,d:'주가 대비 변동성 낮아지는 중.'},
+    {n:'Kijun-sen',v:'415,000',sig:'bull',sc:68,d:'기준선 위 안착. 지지 확인.'}
+  ],
+  consensus:[{y:'2025A',s:'13.27조',o:'-1.72조',e:'적자'},{y:'2026F',s:'15.51조',o:'-0.23조',e:'적자 축소'},{y:'2027F',s:'21.83조',o:'1.17조',e:'흑자전환'},{y:'2028F',s:'25.79조',o:'2.24조',e:'+91%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[-1.72,-0.23,1.17,2.24]},
+  news:[
+    {d:'2026-03-12',t:'인터배터리 파우치형 전고체 배터리 첫 공개.',imp:'pos'},
+    {d:'2026-02-25',t:'ESS 대규모 수주 + 구름대 안착. 보유 중.',imp:'pos'},
+    {d:'2026-01-12',t:'CMF 양전환 하락 추세선 돌파. 매수 진입.',imp:'pos'},
+    {d:'2025-06-05',t:'3년 최저가 확인 V자 반등. 42.56% 수익.',imp:'pos'}
+  ],
+  pnl:{entry:398000,dates:['03/12','03/20','03/25','04/01','04/04'],prices:[398000,415000,425000,435000,438500]}
+},
+{
+  ticker:'028260',name:'삼성물산',sector:'건설/바이오/에너지',
+  price:264000,change:-0.5,signal:'buy',badge:'매수',
+  entryPrice:264000,entryDate:'2026-03-31',
+  atr:18454,rsi:45.1,cmf:0.08,adx:22,
+  kijun:270000,support:[253566,240000,225000],resist:[272000,298357,315000],
+  verdict:'253,500원 피봇 바닥 신호 발생. RSI 상승 다이버전스 초기 형성. 272,000원 매물대 안착 시 비중 확대.',
+  action:'매수',
+  metrics:[{l:'영업이익(25A)',v:'3.3조',s:'사상 최대'},{l:'자사주소각',v:'9.4조',s:'26~28년'},{l:'ATR(14)',v:'18,454',s:'중위험'},{l:'목표주가',v:'320,000',s:'컨센서스'}],
+  indicators:[
+    {n:'RSI(14)',v:'45.1',sig:'neutral',sc:45,d:'상승 다이버전스 초기. 반등 확률 74%.'},
+    {n:'MACD',v:'매수 반전',sig:'bull',sc:58,d:'피봇 바닥 후 MACD 반등 시작.'},
+    {n:'CMF(20)',v:'0.08',sig:'bull',sc:60,d:'저점 확인 후 자금 유입 시작.'},
+    {n:'ATR(14)',v:'18,454',sig:'neutral',sc:50,d:'변동성 6.76%. 손절 폭 넓게.'},
+    {n:'Fib S1/S2',v:'253,500',sig:'bull',sc:65,d:'피보나치 지지 확인 구간.'}
+  ],
+  consensus:[{y:'2025A',s:'',o:'3.3조',e:''},{y:'2026F',s:'',o:'3.6조',e:'+9%'},{y:'2027F',s:'',o:'4.0조',e:'+11%'},{y:'2028F',s:'',o:'4.4조',e:'+10%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[3.3,3.6,4.0,4.4]},
+  news:[
+    {d:'2026-03-31',t:'피봇 바닥(253,500) 확인. 분할 매수 진입.',imp:'pos'},
+    {d:'2026-03-10',t:'2025 실적 발표 S2 지지. 22.1% 수익 실현.',imp:'pos'},
+    {d:'2026-01-29',t:'3년간 최대 9.4조 투자 계획. 자사주 전량 소각.',imp:'pos'},
+    {d:'2025-06-20',t:'배당락 후 RSI 다이버전스. +30.7% 수익.',imp:'pos'}
+  ],
+  pnl:{entry:264000,dates:['03/31','04/01','04/02','04/03','04/04'],prices:[264000,266000,265000,263000,264000]}
+},
+{
+  ticker:'000270',name:'기아',sector:'자동차/PBV/SDV',
+  price:150600,change:-2.8,signal:'watch',badge:'매수추적',
+  entryPrice:155000,entryDate:'2026-02-26',
+  atr:9110,rsi:41.5,cmf:-0.02,adx:19,
+  kijun:153000,support:[146100,143000,135000],resist:[157600,165000,170000],
+  verdict:'구름대 위이나 기준선·전환선 하향 이탈. CMF 중립. RSI 40 접근. 143,000~146,000 피보나치 지지 확인 후 재진입 검토.',
+  action:'매수추적',
+  metrics:[{l:'현금보유',v:'22조',s:''},{l:'배당수익률',v:'4.5~5%',s:'2025E'},{l:'EPS(26F)',v:'21,870',s:'+13%'},{l:'ATR(14)',v:'9,110',s:'변동성 高'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름 상단 지지',sig:'neutral',sc:52,d:'구름대 상방이나 선행스팬 폭 축소.'},
+    {n:'CMF(20)',v:'-0.02',sig:'neutral',sc:45,d:'수급 정체. 외국인 순매수 필요.'},
+    {n:'RSI(14)',v:'41.5',sig:'neutral',sc:42,d:'과매도 접근. 40 지지 시 타점.'},
+    {n:'외국인수급',v:'3일연속 순매수',sig:'bull',sc:65,d:'상관계수 0.76. 핵심 추종 지표.'},
+    {n:'ATR(14)',v:'9,110',sig:'neutral',sc:50,d:'평시보다 높음. 비중 80% 유지.'}
+  ],
+  consensus:[{y:'2025E',s:'114.1조',o:'10.2조',e:'-3.8%'},{y:'2026F',s:'118.5조',o:'11.4조',e:'+11.8%'},{y:'2027F',s:'125.4조',o:'12.6조',e:'+10.5%'},{y:'2028F',s:'132.8조',o:'13.5조',e:'+7.1%'}],
+  epsChart:{l:['25E','26F','27F','28F'],v:[10.2,11.4,12.6,13.5]},
+  news:[
+    {d:'2026-04-02',t:'현재 보유 중. 전환선 회복 전 보수적 관점 유지.',imp:'neu'},
+    {d:'2026-02-26',t:'RSI 과열로 168,000원 분할 매도. +15.8% 실현.',imp:'pos'},
+    {d:'2026-02-05',t:'외국인 수급 전환 + 구름 돌파. 145,000원 매수.',imp:'pos'},
+    {d:'2026-01-15',t:'글로벌 판매 목표 335만대 제시.',imp:'pos'}
+  ],
+  pnl:{entry:155000,dates:['02/26','03/05','03/15','03/25','04/01','04/04'],prices:[155000,158000,162000,165000,162000,150600]}
+},
+{
+  ticker:'005930',name:'삼성전자',sector:'반도체/HBM/AI',
+  price:178400,change:-0.9,signal:'buy',badge:'분할매수',
+  entryPrice:167800,entryDate:'2026-02-11',
+  atr:5200,rsi:47.5,cmf:-0.05,adx:28,
+  kijun:180000,support:[175000,167000,155000],resist:[190000,200000,223000],
+  verdict:'양운 상단 지지 테스트 중. CMF 소폭 음전환이나 PEG 0.1 미만 극저평가. 175,000 구름 지지 + CMF 회복 시 강력 매수.',
+  action:'분할매수',
+  metrics:[{l:'OPM(26F)',v:'60%+',s:'201조 영업이익'},{l:'FWD PEG',v:'0.1 미만',s:'극저평가'},{l:'HBM점유율',v:'1위',s:'엔비디아 전용'},{l:'목표주가',v:'185,000',s:'1차'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름 상단',sig:'neutral',sc:55,d:'양운 두껍게 형성. 하방 경직 강함.'},
+    {n:'CMF(20)',v:'-0.05',sig:'bear',sc:38,d:'소폭 음전환. 단기 차익 실현 수준.'},
+    {n:'RSI(14)',v:'47.5',sig:'neutral',sc:48,d:'중립. 신규 매수 부담 없는 구간.'},
+    {n:'PEG(Fwd)',v:'0.1 미만',sig:'bull',sc:90,d:'2026 EPS 166~278% 성장 반영 극저평가.'},
+    {n:'20일 MA',v:'지지 테스트',sig:'neutral',sc:52,d:'20일선 위 안착 확인 필요.'}
+  ],
+  consensus:[{y:'2025A',s:'333.6조',o:'43.6조',e:'+86%'},{y:'2026F',s:'390조',o:'175조',e:'+301%'},{y:'2027F',s:'420조',o:'200조',e:'+14%'},{y:'2028F',s:'440조',o:'210조',e:'+5%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[43.6,175,200,210]},
+  news:[
+    {d:'2026-04-03',t:'현재가 175,000 구름대 지지 여부 모니터링.',imp:'neu'},
+    {d:'2026-03-31',t:'전환선 이탈로 167,200원 포지션 -0.3% 청산.',imp:'neu'},
+    {d:'2026-02-11',t:'HBM4 기대감 + 20일선 지지. 167,800원 매수.',imp:'pos'},
+    {d:'2025-11-17',t:'기준선 지지 반등 100,600원 매수. +44.3% 익절.',imp:'pos'}
+  ],
+  pnl:{entry:167800,dates:['02/11','02/20','03/01','03/15','03/31','04/04'],prices:[167800,175000,185000,210000,167200,178400]}
+},
+// ── 신규 4종목 (조선/에너지) ─────────────────────────────────
+{
+  ticker:'329180',name:'HD현대중공업',sector:'조선/방산/엔진',
+  price:480000,change:-3.5,signal:'watch',badge:'관망',
+  entryPrice:null,entryDate:null,
+  atr:22000,rsi:43.5,cmf:-0.08,adx:22,
+  kijun:520000,support:[450000,440000,405000],resist:[520000,560000,652000],
+  verdict:'구름대 내부 진입. CMF -0.08 수급 부재. 450,000원 2중 바닥 + CMF 0 돌파 + 기준선(520K) 회복 확인 후 진입.',
+  action:'관망',
+  metrics:[{l:'PBR(26F)',v:'4.23x',s:'성장 프리미엄'},{l:'FWD PER',v:'18.7x',s:'26E EPS 기준'},{l:'EPS성장',v:'+63.3%',s:'2026F'},{l:'ATR(14)',v:'22,000',s:'변동성 高'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름 내부',sig:'bear',sc:28,d:'의운(하락구름) 내부 진입. 기준선 520,000원이 강력 저항선.'},
+    {n:'CMF(20)',v:'-0.08',sig:'bear',sc:25,d:'음수 구간. 기관/외국인 수급 부재. 0 상향 돌파가 반등 선행 신호.'},
+    {n:'RSI(14)',v:'43.5',sig:'neutral',sc:43,d:'중립-과매도 경계. 40 지지 확인 시 단기 반등 기대 가능.'},
+    {n:'ATR(14)',v:'22,000',sig:'neutral',sc:40,d:'높은 변동성 지속. 동적 손절가 440,000원 수준 설정.'},
+    {n:'Kijun-sen',v:'520,000',sig:'bear',sc:25,d:'기준선 520,000원 위 회복 여부가 중기 추세 반전의 핵심 조건.'}
+  ],
+  consensus:[{y:'2025E',s:'17.58조',o:'2.04조',e:'+188.9%'},{y:'2026F',s:'23.85조',o:'3.49조',e:'+71.4%'},{y:'2027F',s:'25.96조',o:'4.24조',e:'+21.5%'},{y:'2028F',s:'28.90조',o:'5.80조',e:'+36.7%'}],
+  epsChart:{l:['25E','26F','27F','28F'],v:[15702,25638,31464,34104]},
+  news:[
+    {d:'2026-04-04',t:'2026F 영업이익 3.49조(+71.4%). 조선 슈퍼사이클 이익 본격 반영 구간.',imp:'pos'},
+    {d:'2026-03-12',t:'545,000원 진입 후 구름대 이탈. ATR 손절 발동, -10.1% 손절 청산.',imp:'neg'},
+    {d:'2026-02-01',t:'특수선 매출 2028년 4.5조 목표. 미 해군 MRO·차세대 군수지원함 수주 모멘텀.',imp:'pos'},
+    {d:'2026-01-05',t:'역사적 신고가 652,000원 달성. 이후 조정 국면 진입.',imp:'pos'}
+  ],
+  pnl:{entry:null,dates:['01/05','02/10','03/01','03/12','04/04'],prices:[652000,545000,500000,490000,480000]}
+},
+{
+  ticker:'010140',name:'삼성중공업',sector:'조선/FLNG',
+  price:28400,change:+1.4,signal:'buy',badge:'매수',
+  entryPrice:28400,entryDate:'2026-04-02',
+  atr:1350,rsi:60.5,cmf:0.18,adx:32,
+  kijun:27800,support:[27000,25200,22500],resist:[32500,35000,43000],
+  verdict:'FLNG 고마진 매출 본격화. BlackRock 5% 지분 공시. CMF 0.18 — 메이저 수급 강력 유입. 기준선 지지 후 진입.',
+  action:'매수',
+  metrics:[{l:'ROE(26F)',v:'25.22%',s:'수익성 급등'},{l:'EPS성장',v:'+127%',s:'2026F vs 25A'},{l:'CMF(20)',v:'0.18',s:'6개월 최고'},{l:'목표주가',v:'36,000~43,000',s:'컨센서스'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:78,d:'구름대 위 안착. 후행스팬 호전 상태. 중기 상승 추세 확립.'},
+    {n:'CMF(20)',v:'0.18',sig:'bull',sc:75,d:'메이저 자금 강력 유입. 최근 6개월 최고 수준. 차익 실현 아닌 추세 매수.'},
+    {n:'RSI(14)',v:'60.5',sig:'bull',sc:62,d:'중립-강세 구간. 추가 상승 여력 충분.'},
+    {n:'ATR(14)',v:'1,350',sig:'neutral',sc:55,d:'변동성 에너지 응축 중. 손절가 25,200원 설정.'},
+    {n:'Kijun-sen',v:'27,800',sig:'bull',sc:72,d:'기준선 27,800원 지지 성공 후 반등. BlackRock 매입 구간 27,000~28,000원.'}
+  ],
+  consensus:[{y:'2024A',s:'9.90조',o:'0.50조',e:'흑자전환'},{y:'2025A',s:'10.65조',o:'0.86조',e:'+71.7%'},{y:'2026F',s:'12.69조',o:'1.57조',e:'+82.0%'},{y:'2027F',s:'14.28조',o:'2.01조',e:'+28.0%'}],
+  epsChart:{l:['25A','26F','27F'],v:[620,1409,1833]},
+  news:[
+    {d:'2026-04-02',t:'BlackRock 5% 이상 지분 보유 공시. 기준선 지지 후 반등 확인. 신규 진입.',imp:'pos'},
+    {d:'2026-03-20',t:'Cedar FLNG 프로젝트 매출 인식 시작. 2026 영업이익 1.5조 돌파 전망.',imp:'pos'},
+    {d:'2026-01-12',t:'26년 영업이익 1.57조 수급 유입. 22,500원→31,500원 +40.0% 익절.',imp:'pos'}
+  ],
+  pnl:{entry:28400,dates:['04/02','04/03','04/04'],prices:[28400,28200,28400]}
+},
+{
+  ticker:'042660',name:'한화오션',sector:'조선/방산/MRO',
+  price:127000,change:-0.8,signal:'buy',badge:'매수',
+  entryPrice:125000,entryDate:'2026-02-25',
+  atr:7200,rsi:53.5,cmf:0.12,adx:30,
+  kijun:120000,support:[115000,120000,108000],resist:[135000,142000,160000],
+  verdict:'한화그룹 편입 후 방산 리레이팅. 양운 위 안착 + CMF 0.12 수급 견조. 기준선 120,000원 눌림목이 추가 진입 타점.',
+  action:'매수',
+  metrics:[{l:'ROE(28F)',v:'26.10%',s:'급성장'},{l:'EPS성장',v:'+46.8%',s:'2026F OPM'},{l:'CMF(20)',v:'0.12',s:'수급 양호'},{l:'목표주가',v:'160,000',s:'방산 리레이팅'}],
+  indicators:[
+    {n:'일목 구름대',v:'양운 위',sig:'bull',sc:70,d:'양운(상승구름) 위에 위치. 방향성 상승 확립. 기준선 이격 주시.'},
+    {n:'CMF(20)',v:'0.12',sig:'bull',sc:65,d:'대규모 자금 이탈 없음. 건전한 조정 확인. 수급 양호.'},
+    {n:'RSI(14)',v:'53.5',sig:'neutral',sc:55,d:'중립-강세 구간. 추가 상승 여력 확보.'},
+    {n:'ATR(14)',v:'7,200',sig:'neutral',sc:48,d:'베타 높음. 손절 폭 넓게 설정. ATR×2.5 = 손절 110,000원.'},
+    {n:'Kijun-sen',v:'120,000',sig:'bull',sc:68,d:'기준선 120,000원이 핵심 지지. 이탈 시 비중 50% 축소 원칙.'}
+  ],
+  consensus:[{y:'2025A',s:'12.78조',o:'1.17조',e:'+390.7%'},{y:'2026F',s:'13.82조',o:'1.71조',e:'+46.8%'},{y:'2027F',s:'15.53조',o:'2.15조',e:'+25.4%'},{y:'2028F',s:'16.68조',o:'2.76조',e:'+28.4%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[4066,4414,5593,7582]},
+  news:[
+    {d:'2026-04-04',t:'2026F 영업이익 1.71조(+46.8%). 방산+상선 투트랙 성장 본격화.',imp:'pos'},
+    {d:'2026-02-25',t:'구름대 상단 지지 확인. 125,000원 신규 진입. 목표가 160,000원.',imp:'pos'},
+    {d:'2025-10-15',t:'미국 해군 MRO 모멘텀 강화. 115,000원 매수 → 142,000원 +23.5% 익절.',imp:'pos'},
+    {d:'2025-04-05',t:'1Q25 어닝 서프라이즈. 68,000원 진입 → 95,000원 +39.7% 익절.',imp:'pos'}
+  ],
+  pnl:{entry:125000,dates:['02/25','03/05','03/15','03/25','04/01','04/04'],prices:[125000,130000,132000,128000,126000,127000]}
+},
+{
+  ticker:'096770',name:'SK이노베이션',sector:'에너지/정유/배터리',
+  price:118200,change:+2.1,signal:'buy',badge:'매수',
+  entryPrice:111400,entryDate:'2026-03-27',
+  atr:635,rsi:57.8,cmf:0.18,adx:28,
+  kijun:110000,support:[110000,102300,80300],resist:[125000,136700,142000],
+  verdict:'2026년 영업이익 +580% 전망 턴어라운드. 양운 상단 안착 + CMF 6개월 최고(0.18). 기준선 110,000원 눌림목이 핵심 추가 타점.',
+  action:'매수',
+  metrics:[{l:'PBR(26F)',v:'0.88x',s:'역사적 저점 회복'},{l:'EPS(26F)',v:'4,257원',s:'흑자 전환'},{l:'CMF(20)',v:'0.18',s:'6개월 최고'},{l:'ATR(14)',v:'635',s:'변동성 안정화'}],
+  indicators:[
+    {n:'일목 구름대',v:'양운 상단',sig:'bull',sc:75,d:'일봉 양운 상단 안착. 전환선·기준선 동시 우상향. 강한 추세.'},
+    {n:'CMF(20)',v:'0.18',sig:'bull',sc:78,d:'6개월 내 최고 자금 유입 강도. 기관·외국인 동반 순매수.'},
+    {n:'RSI(14)',v:'57.8',sig:'bull',sc:60,d:'중립-강세 구간. 과매수 아님. 추가 상승 여력 충분.'},
+    {n:'ATR(14)',v:'635',sig:'bull',sc:65,d:'변동성 안정화. 계단식 상승 가능성. 손절가 110,000원 수준.'},
+    {n:'Kijun-sen',v:'110,000',sig:'bull',sc:72,d:'기준선 110,000원 강력 지지. 조정 시 핵심 매수 타점.'}
+  ],
+  consensus:[{y:'2025E',s:'80.66조',o:'0.41조',e:'-78.4%'},{y:'2026F',s:'75.80조',o:'2.06조',e:'+402%'},{y:'2027F',s:'81.23조',o:'3.87조',e:'+87.9%'},{y:'2028F',s:'74.62조',o:'6.67조',e:'+72.4%'}],
+  epsChart:{l:['25E','26F','27F','28F'],v:[-9460,4257,12199,17797]},
+  news:[
+    {d:'2026-04-03',t:'현재가 118,200원. CMF 0.18 — 상승 추세 초기 단계. 기준선 눌림목 추가 매수 기회.',imp:'pos'},
+    {d:'2026-03-04',t:'26.3% 수익 익절. 이후 기준선 재지지 확인 후 111,400원 재진입.',imp:'pos'},
+    {d:'2026-01-28',t:'실적 턴어라운드 전망 + CMF 급증. 108,200원 매수 → 136,700원 +26.3%.',imp:'pos'},
+    {d:'2025-10-31',t:'3Q25 어닝 서프라이즈. 128,900원 진입 → 142,000원 +10.2% 익절.',imp:'pos'}
+  ],
+  pnl:{entry:111400,dates:['03/27','03/31','04/02','04/04'],prices:[111400,115000,117000,118200]}
+},
+// ── 신규 2종목 (바이오/전력기기) ─────────────────────────────
+{
+  ticker:'196170',name:'알테오젠',sector:'바이오/SC 플랫폼',
+  price:373000,change:-1.2,signal:'watch',badge:'매수추적',
+  entryPrice:null,entryDate:null,
+  atr:15200,rsi:38.5,cmf:-0.03,adx:18,
+  kijun:410000,support:[360000,340000,310000],resist:[410000,437500,480000],
+  verdict:'200일선 대비 -35% 이탈. BB(20,2.5) 하단 근접. RSI(21) 40선 탈출 + Stoch Slow(20,12,12) GC + 거래량 50% 증가 컨플루언스 조건 충족 시 진입. 펀더멘털 훼손 없는 기간 조정 국면.',
+  action:'매수추적',
+  metrics:[{l:'PER(FWD)',v:'67.8x',s:'선행'},{l:'목표주가',v:'437,500',s:'컨센서스'},{l:'영업이익(25A)',v:'1,069억',s:'+321%'},{l:'EPS CAGR',v:'+71.1%',s:'3년 전망'}],
+  indicators:[
+    {n:'RSI(21)',v:'38.5',sig:'bear',sc:38,d:'과매도 접근. 40선 상향 돌파 시 매수 신호.'},
+    {n:'Stoch Slow(20,12,12)',v:'침체권',sig:'bear',sc:30,d:'%K/%D 침체권. GC 발생 시 핵심 진입 신호.'},
+    {n:'BB(20,2.5)',v:'하단 근접',sig:'neutral',sc:42,d:'2.5σ 하단 터치 후 재진입 시 평균회귀 기회.'},
+    {n:'ADX(20)',v:'18',sig:'neutral',sc:40,d:'추세 강도 약. 25 이상 회복 후 진입 유효.'},
+    {n:'CMF(20)',v:'-0.03',sig:'neutral',sc:45,d:'소폭 음전환. 0선 복귀 확인 필요.'}
+  ],
+  consensus:[{y:'2025A',s:'2,159억',o:'1,069억',e:'+321%'},{y:'2026F',s:'3,580억',o:'1,820억',e:'+70%'},{y:'2027F',s:'5,940억',o:'3,100억',e:'+70%'},{y:'2028F',s:'9,850억',o:'5,200억',e:'+68%'}],
+  epsChart:{l:['25A','26F','27F','28F'],v:[1069,1820,3100,5200]},
+  news:[
+    {d:'2026-04-04',t:'키트루다SC 미국·유럽 허가 완료. 2025 매출 2,159억·영업이익 1,069억.',imp:'pos'},
+    {d:'2026-03-20',t:'현금 배당 200억 결의. 추가 자금 조달 계획 없음 — 오버행 해소.',imp:'pos'},
+    {d:'2026-02-01',t:'MSD 독점계약. 2028년까지 키트루다 50% SC전환 목표.',imp:'pos'},
+    {d:'2026-01-15',t:'다이이찌산쿄 엔허투·AZ 항암제 ADC SC 전환 파이프라인 순항.',imp:'pos'}
+  ],
+  pnl:{entry:null,dates:[],prices:[]}
+},
+{
+  ticker:'010120',name:'LS ELECTRIC',sector:'전력기기/AI데이터센터',
+  price:640000,change:-2.1,signal:'watch',badge:'재진입대기',
+  entryPrice:520000,entryDate:'2026-02-15',
+  atr:18500,rsi:52.0,cmf:0.05,adx:32,
+  kijun:580000,support:[560000,520000,480000],resist:[700000,750000,800000],
+  verdict:'최근 매매: 26.02.15 520K→26.03.30 680K +30.7% 익절 완료. 기준선 지지 확인 중. CMF>0 + RSI(14) 불리쉬 다이버전스 + 기준선 반등 양봉 시 재진입 검토.',
+  action:'재진입대기',
+  metrics:[{l:'PER(26F)',v:'19x',s:'저평가'},{l:'EPS CAGR',v:'59.5%',s:'25~27F'},{l:'영업이익(26F)',v:'6,897억',s:'+62%'},{l:'PF(백테)',v:'2.48',s:'승률 74.2%'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:75,d:'정배열 유지. 기준선 지지 반등이 핵심 신호.'},
+    {n:'RSI(14)',v:'52.0',sig:'neutral',sc:52,d:'40~50 불리쉬 다이버전스 포착 대기.'},
+    {n:'CMF(20)',v:'0.05',sig:'bull',sc:60,d:'기관 수급 소폭 양전환. 0선 지지 확인.'},
+    {n:'ATR(14)',v:'18,500',sig:'neutral',sc:50,d:'동적 손절 기준. 트레일링 스탑 적용.'},
+    {n:'전환선',v:'620,000',sig:'neutral',sc:55,d:'전환선 지지 유지 여부 지속 모니터링.'}
+  ],
+  consensus:[{y:'2024A',s:'4.2조',o:'3,249억',e:'OPM 7.7%'},{y:'2025F',s:'4.9조',o:'4,269억',e:'+31%'},{y:'2026F',s:'6.1조',o:'6,897억',e:'+62%'},{y:'2027F',s:'7.2조',o:'9,110억',e:'+32%'}],
+  epsChart:{l:['24A','25F','26F','27F'],v:[3249,4269,6897,9110]},
+  news:[
+    {d:'2026-03-30',t:'기준선 반등 재진입 520K→680K +30.7% 전략 목표 달성 매도.',imp:'pos'},
+    {d:'2026-02-15',t:'RSI 다이버전스+수주 공시 진입. 이전 260K→320K +23.1% 성공.',imp:'pos'},
+    {d:'2026-01-20',t:'북미 빅테크 배전 솔루션 수주 급증. AI인프라 전력 모멘텀.',imp:'pos'},
+    {d:'2025-11-12',t:'북미 데이터센터 수주 345K→480K +39.1% 익절 완료.',imp:'pos'}
+  ],
+  pnl:{entry:520000,dates:['02/15','02/20','03/01','03/10','03/20','03/30'],prices:[520000,560000,600000,640000,680000,640000]}
+},
+// ── 신규 2종목 (전력기기/화학) ────────────────────────────────
+{
+  ticker:'267260',name:'HD현대일렉트릭',sector:'전력기기/변압기',
+  price:865000,change:-1.8,signal:'buy',badge:'분할매수',
+  entryPrice:865000,entryDate:'2026-04-04',
+  atr:18500,rsi:41.0,cmf:0.02,adx:24,
+  kijun:830000,support:[800000,780000,740000],resist:[920000,980000,1100000],
+  verdict:'고점 110만원 대비 20% 조정 구간. 120일선(78~80만) 강력 지지. CMF 0선 상향 돌파 + 전환선 돌파 시 1차 진입. RSI 45 이하 눌림목 진입 타점. 수주잔고 및 실적 훼손 없음.',
+  action:'분할매수',
+  metrics:[{l:'OPM(25잠)',v:'24.4%',s:'사상최대'},{l:'EPS(26F)',v:'26,785',s:'+31.8%'},{l:'ROE(25)',v:'40.5%',s:'글로벌1위'},{l:'목표주가',v:'120~130만',s:'컨센서스'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:70,d:'장기 상승 추세 유효. 120일선 부근 눌림목 에너지 응축.'},
+    {n:'CMF(20)',v:'0.02',sig:'neutral',sc:52,d:'0선 부근. 양전환 확인 시 기관 유입 신호. 핵심 진입 트리거.'},
+    {n:'RSI(14)',v:'41.0',sig:'neutral',sc:41,d:'40~45 구간 역사적 강반등 구간. 50 돌파 시 매수 강도 확대.'},
+    {n:'ATR(14)',v:'18,500',sig:'neutral',sc:50,d:'일변동 약 2.1%. 손절가 800,000원 수준 설정.'},
+    {n:'OBV',v:'견조 유지',sig:'bull',sc:65,d:'주가 하락 대비 OBV 고점 유지. 스마트머니 이탈 없음.'}
+  ],
+  consensus:[{y:'2024A',s:'3.32조',o:'0.67조',e:'+112.2%'},{y:'2025잠',s:'4.08조',o:'1.00조',e:'+48.9%'},{y:'2026F',s:'4.77조',o:'1.28조',e:'+28.4%'},{y:'2027F',s:'5.65조',o:'1.59조',e:'+24.3%'}],
+  epsChart:{l:['24A','25잠','26F','27F'],v:[13914,20324,26785,33639]},
+  news:[
+    {d:'2026-04-04',t:'고점 대비 20% 조정. 120일선 지지 확인 구간. 분할 매수 시작.',imp:'pos'},
+    {d:'2026-03-15',t:'2026 매출 가이던스 4.35조(보수적). 환율 우호 시 상회 기대.',imp:'pos'},
+    {d:'2026-02-10',t:'앨라배마 제2공장 기공. 765kV 변압기 북미 점유율 확대 가속.',imp:'pos'},
+    {d:'2026-01-20',t:'110만원 사상 최고가 달성. 이후 조정 진입.',imp:'neu'}
+  ],
+  pnl:{entry:865000,dates:['04/04'],prices:[865000]}
+},
+{
+  ticker:'051910',name:'LG화학',sector:'화학/소재/배터리',
+  price:290000,change:+1.2,signal:'watch',badge:'매수추적',
+  entryPrice:null,entryDate:null,
+  atr:8500,rsi:46.0,cmf:-0.02,adx:18,
+  kijun:305000,support:[270000,255000,235000],resist:[320000,340000,360000],
+  verdict:'2024~2025년 캐즘 저점 통과 중. 2027 EPS 19,160원, 2028 EPS 40,542원 폭발 성장 전망. 구름대 하단 지지 + CMF 0선 돌파 + RSI 상승 다이버전스 발생 시 분할 진입. 떨어지는 칼날 구간 주의.',
+  action:'매수추적',
+  metrics:[{l:'EPS(27F)',v:'19,160원',s:'흑자전환'},{l:'EPS(28F)',v:'40,542원',s:'고성장'},{l:'PF(백테)',v:'2.45',s:'최적화'},{l:'MDD',v:'-8.5%',s:'리스크관리'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 하단',sig:'bear',sc:32,d:'Kumo 하단 지지 테스트 중. 구름 위 복귀가 핵심 신호.'},
+    {n:'CMF(20)',v:'-0.02',sig:'neutral',sc:45,d:'중립 접근. 0 상향 돌파 시 스마트머니 유입 확인.'},
+    {n:'RSI(14)',v:'46.0',sig:'neutral',sc:46,d:'RSI 상승 다이버전스 형성 여부가 진입 핵심 필터.'},
+    {n:'Williams%R',v:'-62',sig:'neutral',sc:38,d:'과매도 접근. ATR 손절 = 진입가 × ATR×2.'},
+    {n:'볼린저밴드',v:'스퀴즈',sig:'neutral',sc:50,d:'밴드 폭 축소. 폭발적 방향성 분출 임박.'}
+  ],
+  consensus:[{y:'2025E',s:'45.9조',o:'1.18조',e:'+35%'},{y:'2026F',s:'48.7조',o:'1.55조',e:'+31.4%'},{y:'2027F',s:'56.1조',o:'4.20조',e:'+171%'},{y:'2028F',s:'65.2조',o:'7.06조',e:'+68.1%'}],
+  epsChart:{l:['25E','26F','27F','28F'],v:[-23244,490,19160,40542]},
+  news:[
+    {d:'2026-04-04',t:'구름대 하단 지지 테스트. CMF 0선 복귀 대기. 매수추적 유지.',imp:'neu'},
+    {d:'2026-03-01',t:'양극재 2026년 출하량 40% 증가 전망. 실적 반등 트리거.',imp:'pos'},
+    {d:'2026-01-15',t:'2027~2028 EPS 폭발 성장 시작. 선제 매집 기회.',imp:'pos'},
+    {d:'2025-10-25',t:'CMF 양전환 매수 → +26.6% 수익 실현(2026.01.15).',imp:'pos'}
+  ],
+  pnl:{entry:null,dates:[],prices:[]}
+},
+// ── 신규 7종목 (2026-04 추가) ──────────────────────────────────
+{
+  ticker:'087010',name:'펩트론',sector:'바이오/GLP-1 지속형',
+  price:290000,change:-1.5,signal:'watch',badge:'매수추적',
+  entryPrice:null,entryDate:null,
+  atr:18000,rsi:45.0,cmf:0.02,adx:20,
+  kijun:310000,support:[290000,270000,250000],resist:[320000,350000,400000],
+  verdict:'스마트데포 기술 기반 일라이 릴리 MTA 기간 연장(최대 24개월) 심화 검증 중. 구름대 하단 지지+CMF(0.1) 돌파+RSI 상승 다이버전스 3중 충족 시 진입. 기술 평가 기간 내 리스크 관리 필수. 본계약 전환 시 주가 급반등 기대.',
+  action:'매수추적',
+  metrics:[{l:'승률(백테)',v:'75%',s:'4회 3익'},{l:'MDD',v:'-12.1%',s:'최적화'},{l:'목표주가',v:'40만원',s:'컨센서스'},{l:'PF(백테)',v:'2.12',s:'최적화'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 하단',sig:'bear',sc:35,d:'구름대 하단 지지 테스트. 구름대 상단 재진입 시 강력 매수 신호.'},
+    {n:'CMF(20)',v:'0.02',sig:'neutral',sc:45,d:'0.1 이상 돌파 시 기관 스마트머니 유입 확인. 핵심 진입 필터.'},
+    {n:'RSI(14)',v:'45.0',sig:'neutral',sc:45,d:'RSI 상승 다이버전스 형성 여부가 진입 핵심 필터. 40선 지지 시 타점.'},
+    {n:'ATR(14)',v:'18,000',sig:'neutral',sc:50,d:'고변동성. ATR×2.5 손절가=진입가-45,000원 수준 적용.'},
+    {n:'Williams%R',v:'-55',sig:'neutral',sc:40,d:'중립권. 과매도 탈출+CMF 양전환 시 매수 트리거.'}
+  ],
+  consensus:[{y:'2024A',s:'영업손실',o:'-165억',e:'적자지속'},{y:'2025F',s:'루프원출하',o:'개선중',e:'흑전대기'},{y:'2026F',s:'오송신공장',o:'가동예정',e:'MTA결과'},{y:'2027F',s:'본계약시',o:'급성장',e:'재평가'}],
+  epsChart:{l:['24A','25F','26F','27F'],v:[-594,-300,0,500]},
+  news:[
+    {d:'2026-04-04',t:'일라이 릴리 MTA 기간 연장 진행. 구름대 하단 지지 확인. 매수추적 유지.',imp:'neu'},
+    {d:'2026-02-15',t:'200일선 지지+전환선 골든크로스 진입 → +12.7% 수익 실현(03.24).',imp:'pos'},
+    {d:'2025-12-01',t:'[손절] 기술 평가 연장 공시+기준선 이탈 → -10.9% 손절.',imp:'neg'},
+    {d:'2025-08-20',t:'카무루스 리스크 해소+기준선 반등 진입 → +120.9% 수익 실현.',imp:'pos'}
+  ],
+  pnl:{entry:null,dates:[],prices:[]}
+},
+{
+  ticker:'214450',name:'파마리서치',sector:'바이오/재생의학',
+  price:314000,change:+2.1,signal:'watch',badge:'매수추적',
+  entryPrice:null,entryDate:null,
+  atr:11500,rsi:45.0,cmf:0.05,adx:22,
+  kijun:310000,support:[305000,295000,280000],resist:[320000,340000,366500],
+  verdict:'리쥬란 글로벌 수출 가속+인적 분할 불확실성 해소 구간. 구름대+CMF(+)+RSI 다이버전스+MA20 돌파 4중 조건 충족 시 진입. 2026 EPS +32.5%, 2027 EPS +31.3% 고성장. 목표주가 430,000원.',
+  action:'매수추적',
+  metrics:[{l:'EPS(26F)',v:'19,348원',s:'+32.5%'},{l:'EPS(27F)',v:'25,397원',s:'+31.3%'},{l:'PF(백테)',v:'2.15',s:'최적화'},{l:'MDD',v:'-21.4%',s:'파인튜닝후개선'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 근접',sig:'neutral',sc:55,d:'구름대 위 위치 확인 후 기준선 지지 반등 시 진입.'},
+    {n:'CMF(20)',v:'0.05',sig:'neutral',sc:55,d:'양수 유지. 외국인 지분율 안정 시 강도 상승.'},
+    {n:'RSI(14)',v:'45.0',sig:'neutral',sc:45,d:'RSI 상승 다이버전스 포착이 핵심 타점 필터.'},
+    {n:'ATR(14)',v:'11,500',sig:'neutral',sc:50,d:'ATR×2.5 동적 손절. 포지션 사이징 총자산1%/(2.5×ATR) 적용.'},
+    {n:'MA20',v:'308,000',sig:'neutral',sc:50,d:'MA20 강돌파 양봉이 최종 진입 트리거.'}
+  ],
+  consensus:[{y:'2024E',s:'3,501억',o:'1,261억',e:'EPS 8,608'},{y:'2025F',s:'5,363억',o:'2,144억',e:'EPS 14,600'},{y:'2026F',s:'6,855억',o:'2,668억',e:'+32.5%'},{y:'2027F',s:'8,326억',o:'3,420억',e:'+31.3%'}],
+  epsChart:{l:['24E','25F','26F','27F'],v:[8608,14600,19348,25397]},
+  news:[
+    {d:'2026-04-04',t:'리쥬란 유럽 22개국 점유율 확대. 기준선 부근 매수추적 지속.',imp:'pos'},
+    {d:'2026-03-01',t:'인적 분할 우려 해소. 순자산 ROE 28.1% 우수 재무구조 확인.',imp:'pos'},
+    {d:'2025-12-15',t:'RSI 다이버전스+기준선 반등 재진입. ATR 동적 손절 적용.',imp:'pos'},
+    {d:'2025-09-10',t:'인적 분할 공시 이후 주가 급락. 트레일링 스탑 발동 손실 최소화.',imp:'neg'}
+  ],
+  pnl:{entry:null,dates:[],prices:[]}
+},
+{
+  ticker:'214150',name:'클래시스',sector:'미용의료기기/HIFU',
+  price:63400,change:+1.5,signal:'buy',badge:'매수',
+  entryPrice:63400,entryDate:'2026-04-04',
+  atr:4400,rsi:55.0,cmf:0.08,adx:28,
+  kijun:62800,support:[62800,58000,54000],resist:[70000,75000,83000],
+  verdict:'슈링크+볼뉴머+쿼드세이 포트폴리오 다각화. 브라질 JL Health 연결 편입으로 2026 매출 4,763억 예상(+41.4%). 구름대 상방+CMF 0.05이상+기준선 지지 확인. PF 2.18, 승률 71.4%. 목표주가 83,000원.',
+  action:'매수',
+  metrics:[{l:'OPM(26F)',v:'49.6%',s:'고마진'},{l:'EPS(26F)',v:'2,767원',s:'+25.2%'},{l:'PF(백테)',v:'2.18',s:'달성'},{l:'MDD',v:'-11.2%',s:'우수'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:70,d:'구름대 위 안착. 기준선 지지 확인 후 5일선 회복 양봉 진입.'},
+    {n:'CMF(20)',v:'0.08',sig:'bull',sc:65,d:'0.05 이상 유지. 기관 순매수세 지속. 핵심 진입 필터 충족.'},
+    {n:'RSI(14)',v:'55.0',sig:'bull',sc:55,d:'50선 우상향. 추세적 강세 확인. 75 초과 시 분할 매도 준비.'},
+    {n:'ATR(14)',v:'4,400',sig:'neutral',sc:50,d:'손절가 54,000원(기준선×0.86). 전환선 이탈 시 50% 매도.'},
+    {n:'ADX(14)',v:'28',sig:'bull',sc:65,d:'25 이상 추세 강도 확인. 볼린저밴드 상단 돌파 시 목표 70,000원.'}
+  ],
+  consensus:[{y:'2024E',s:'2,400억',o:'1,200억',e:'OPM 50%'},{y:'2025E',s:'3,368억',o:'1,852억',e:'OPM 55%'},{y:'2026F',s:'4,763억',o:'2,363억',e:'+25.2%'},{y:'2027F',s:'5,800억',o:'2,900억',e:'+24.2%'}],
+  epsChart:{l:['24E','25E','26F','27F'],v:[1602,2213,2767,3435]},
+  news:[
+    {d:'2026-04-04',t:'브라질 JL Health 연결 실적 반영 시작. 2026 매출 4,763억 전망.',imp:'pos'},
+    {d:'2026-02-20',t:'미국 FDA 울트라포머 허가 신청 진행. 중국 볼뉴머 시장 진입.',imp:'pos'},
+    {d:'2025-11-15',t:'과거 평균 대비 -31% 저평가 구간. 기관 매집 재개 확인.',imp:'pos'},
+    {d:'2025-09-01',t:'섹터 전반 밸류에이션 압축 구간. 기준선 지지 반등 진입.',imp:'neu'}
+  ],
+  pnl:{entry:63400,dates:['04/04'],prices:[63400]}
+},
+{
+  ticker:'030530',name:'원익IPS',sector:'반도체 전공정 장비',
+  price:110000,change:+2.3,signal:'buy',badge:'매수',
+  entryPrice:110000,entryDate:'2026-04-04',
+  atr:3500,rsi:55.0,cmf:0.05,adx:30,
+  kijun:105000,support:[100000,95000,88000],resist:[120000,130000,140000],
+  verdict:'삼성전자 P4+SK하이닉스 M15X 대형 발주 수혜. 2026 영업이익 1,818억(+146.3%). MACD(10,22,7) 골든크로스+CMF 0.05이상+기준선 지지 확인 시 진입. ATR×2.5 트레일링 스탑. 목표주가 140,000원.',
+  action:'매수',
+  metrics:[{l:'EPS(26E)',v:'3,347원',s:'+146.3%'},{l:'목표주가',v:'14만원',s:'PER 41x'},{l:'PF(백테)',v:'2.20',s:'달성'},{l:'MDD',v:'-9.5%',s:'우수'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:72,d:'주봉 선행스팬 상단 위. 장기 업사이클 초입 신호.'},
+    {n:'CMF(20)',v:'0.05',sig:'bull',sc:60,d:'0.05 이상 유지. 기관·외국인 동반 유입 확인.'},
+    {n:'RSI(14)',v:'55.0',sig:'bull',sc:55,d:'35 이하 과매도 탈출 후 50 상향 돌파 시 매수 강도 확대.'},
+    {n:'MACD',v:'골든크로스',sig:'bull',sc:70,d:'(10,22,7) 설정 0선 상향 반전. 핵심 매수 트리거.'},
+    {n:'ATR(14)',v:'3,500',sig:'neutral',sc:50,d:'ATR×2.5=8,750원 손절폭. 트레일링 스탑 연동.'}
+  ],
+  consensus:[{y:'2025P',s:'9,098억',o:'738억',e:'OPM 8.1%'},{y:'2026E',s:'12,844억',o:'1,818억',e:'+146.3%'},{y:'2027E',s:'15,752억',o:'2,438억',e:'OPM 15.5%'},{y:'2028E',s:'18,000억+',o:'3,000억+',e:'성장지속'}],
+  epsChart:{l:['25P','26E','27E'],v:[2379,3347,4532]},
+  news:[
+    {d:'2026-04-04',t:'삼성 P4 신규 발주 확인. 구름대 상방 안착+MACD 골든크로스 진입.',imp:'pos'},
+    {d:'2026-03-01',t:'SK하이닉스 M15X 장비 발주 개시. 2026 파운드리향 1,391억 급증.',imp:'pos'},
+    {d:'2026-01-20',t:'북미 파운드리 고객사 CVD 장비 평가 완료. 2027 양산 공급 예정.',imp:'pos'},
+    {d:'2025-11-10',t:'4Q 성과급 일회성 비용 172억(컨센 하회). 펀더멘탈 훼손 없음.',imp:'neu'}
+  ],
+  pnl:{entry:110000,dates:['04/04'],prices:[110000]}
+},
+{
+  ticker:'095340',name:'ISC',sector:'반도체 테스트 소켓',
+  price:95000,change:+1.8,signal:'buy',badge:'매수',
+  entryPrice:95000,entryDate:'2026-04-04',
+  atr:5000,rsi:50.0,cmf:0.15,adx:26,
+  kijun:90000,support:[85000,80000,75000],resist:[100000,110000,120000],
+  verdict:'AI GPU 양산용 실리콘 러버 소켓 독점적 성장. 2026 EPS 4,082원(+47.3%). CMF 0.15이상+구름대(7,20,44)+5일선≥20일선 골든크로스 시 진입. PF 2.20, 승률 70%+. 목표주가 163,000원.',
+  action:'매수',
+  metrics:[{l:'EPS(26F)',v:'4,082원',s:'+47.3%'},{l:'EPS(27F)',v:'5,674원',s:'+39.1%'},{l:'목표주가',v:'16.3만원',s:'PER 40x'},{l:'PF(백테)',v:'2.20',s:'달성'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:68,d:'(7,20,44) 최적화 설정. 전환선 기준선 골든크로스 확인.'},
+    {n:'CMF(20)',v:'0.15',sig:'bull',sc:75,d:'0.15 이상 돌파. 스마트머니 강한 유입. 핵심 진입 신호.'},
+    {n:'RSI(14)',v:'50.0',sig:'bull',sc:52,d:'45 이하→50 상향 돌파 매수 타이밍. 75 이상 진입 금지.'},
+    {n:'ATR(14)',v:'5,000',sig:'neutral',sc:50,d:'손절가 진입가-1.5×ATR. 켈리 쿼터 10~15% 비중.'},
+    {n:'OPM',v:'32.9%',sig:'bull',sc:70,d:'AI GPU향 고마진 비중 확대. 2027 OPM 35% 목표.'}
+  ],
+  consensus:[{y:'2024A',s:'1,740억',o:'450억',e:'OPM 25.7%'},{y:'2025E',s:'2,200억',o:'600억',e:'EPS 2,772'},{y:'2026F',s:'2,870억',o:'940억',e:'+47.3%'},{y:'2027F',s:'3,320억',o:'1,160억',e:'OPM 35%'}],
+  epsChart:{l:['24A','25E','26F','27F'],v:[2579,2772,4082,5674]},
+  news:[
+    {d:'2026-04-04',t:'AI GPU 세대교체 수혜. CMF 0.15 돌파+구름대 안착 진입.',imp:'pos'},
+    {d:'2026-02-15',t:'대만 윈웨이 점유율 침투 가속. AI 관련 매출 2025년 1,500억 예상.',imp:'pos'},
+    {d:'2026-01-10',t:'2025 EPS 2,772원 확정. 2026 목표 4,082원 달성 가시성 높음.',imp:'pos'},
+    {d:'2025-10-20',t:'2nm 공정 전환 수혜. 테스트 난이도 상승 → ASP 상향.',imp:'pos'}
+  ],
+  pnl:{entry:95000,dates:['04/04'],prices:[95000]}
+},
+{
+  ticker:'058470',name:'리노공업',sector:'반도체 테스트 소켓/핀',
+  price:110400,change:+0.8,signal:'buy',badge:'매수',
+  entryPrice:110400,entryDate:'2026-04-04',
+  atr:3200,rsi:55.0,cmf:0.10,adx:28,
+  kijun:107000,support:[105000,100000,92000],resist:[120000,128200,140000],
+  verdict:'R&D 소켓 시장 글로벌 70% 점유율. 2026 영업이익률 46.5% 초고마진. 구름대+CMF(0.1이상)+기준선 지지 반등+RSI 50 이상 우상향 시 진입. 승률 72.5%, PF 2.24. 목표주가 140,000원.',
+  action:'매수',
+  metrics:[{l:'OPM(26E)',v:'46.5%',s:'초고마진'},{l:'EPS(26E)',v:'9,639원',s:'+11.4%'},{l:'PF(백테)',v:'2.24',s:'달성'},{l:'MDD',v:'-11.4%',s:'우수'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상방',sig:'bull',sc:75,d:'선행스팬B 강력 지지. 구름대 위 위치 중기 상승 추세 유효.'},
+    {n:'CMF(20)',v:'0.10',sig:'bull',sc:70,d:'0.1 이상 유지. 스마트머니 강한 유입. 기관 순매수 동반.'},
+    {n:'RSI(14)',v:'55.0',sig:'bull',sc:55,d:'50 이상 우상향. 기준선 반등 양봉 타점 확인.'},
+    {n:'ATR(14)',v:'3,200',sig:'neutral',sc:50,d:'ATR×2 손절가=진입가-6,400원. 전환선 이탈 시 트레일링 스탑.'},
+    {n:'ADX(14)',v:'28',sig:'bull',sc:65,d:'25 이상 추세 강도. 24년 연속 배당 지급 안정주.'}
+  ],
+  consensus:[{y:'2024A',s:'2,780억',o:'1,240억',e:'OPM 44.6%'},{y:'2025E',s:'3,260억',o:'1,515억',e:'EPS 8,655'},{y:'2026E',s:'3,610억',o:'1,680억',e:'+11.4%'},{y:'2027E',s:'4,010억',o:'1,790억',e:'+5.4%'}],
+  epsChart:{l:['24A','25E','26E','27E'],v:[7411,8655,9639,10163]},
+  news:[
+    {d:'2026-04-04',t:'부산 신공장(11월) 이전 후 생산 CAPA 2배 확대. 기준선 지지 매수.',imp:'pos'},
+    {d:'2026-02-10',t:'온디바이스 AI 확산→테스트 난이도 상승→ASP 개선 가속.',imp:'pos'},
+    {d:'2025-11-20',t:'2025 AI향 R&D 소켓 비중 60% 돌파. 고마진 구조 공고화.',imp:'pos'},
+    {d:'2025-07-15',t:'구름대+CMF 0.1 돌파 진입 → 승률 74.2% 확인.',imp:'pos'}
+  ],
+  pnl:{entry:110400,dates:['04/04'],prices:[110400]}
+},
+{
+  ticker:'145020',name:'휴젤',sector:'보툴리눔 톡신/필러',
+  price:243000,change:-1.2,signal:'watch',badge:'매수추적',
+  entryPrice:null,entryDate:null,
+  atr:7100,rsi:42.0,cmf:-0.02,adx:18,
+  kijun:256000,support:[242000,230000,215000],resist:[256000,272000,300000],
+  verdict:'기준선(256K) 하단 조정 중. CMF 0 상향+구름대 복귀+OBV 고점 돌파 시 진입. 2026 EPS +14.7%, 2027 EPS +33.5%. 미국 직판 체제 전환 중장기 리레이팅 촉매. 목표주가 350,000원.',
+  action:'매수추적',
+  metrics:[{l:'EPS(26F)',v:'16,099원',s:'+14.7%'},{l:'EPS(27F)',v:'21,500원',s:'+33.5%'},{l:'PF(백테)',v:'2.48',s:'달성'},{l:'MDD',v:'-12.3%',s:'우수'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 하단',sig:'bear',sc:40,d:'구름대 하단 접근 중. 기준선(256K) 회복이 핵심 재진입 신호.'},
+    {n:'CMF(20)',v:'-0.02',sig:'bear',sc:42,d:'소폭 음전환. 0 상향 돌파+OBV 반등 시 기관 유입 확인.'},
+    {n:'RSI(14)',v:'42.0',sig:'neutral',sc:42,d:'40~45 과매도 접근. 기준선 지지 반등 양봉 시 매수 트리거.'},
+    {n:'ATR(14)',v:'7,100',sig:'neutral',sc:50,d:'ATR×2 손절가. 기준선 하향 이탈 시 전량 매도.'},
+    {n:'Williams%R',v:'-65',sig:'neutral',sc:38,d:'과매도 접근. 볼린저밴드 상단 RSI 75 초과 시 분할 매도.'}
+  ],
+  consensus:[{y:'2024A',s:'3,748억',o:'1,577억',e:'OPM 42.1%'},{y:'2025E',s:'4,411억',o:'2,106억',e:'EPS 14,029'},{y:'2026F',s:'5,010억',o:'2,435억',e:'+14.7%'},{y:'2027F',s:'6,400억',o:'미정',e:'+33.5%'}],
+  epsChart:{l:['24A','25E','26F','27F'],v:[10985,14029,16099,21500]},
+  news:[
+    {d:'2026-04-04',t:'기준선(256K) 하단 조정. CMF 0선 복귀 대기. 매수추적 유지.',imp:'neu'},
+    {d:'2026-03-10',t:'미국 직판 조직 2026 본격 가동. 중장기 OPM 개선 촉매.',imp:'pos'},
+    {d:'2026-01-20',t:'중국·유럽 보툴리눔 점유율 확대. 2027 매출 6,400억 전망.',imp:'pos'},
+    {d:'2025-11-05',t:'구름대+CMF 양전환 진입 → +15% 수익 실현. 트레일링 스탑 적용.',imp:'pos'}
+  ],
+  pnl:{entry:null,dates:[],prices:[]}
+},
+// ── 신규 1종목 (펄어비스, 2026-04 추가) ───────────────────────────
+{
+  ticker:'263750',name:'펄어비스',sector:'게임/붉은사막/도깨비',
+  price:63200,change:-1.8,signal:'watch',badge:'매수추적',
+  entryPrice:null,entryDate:null,
+  atr:4200,rsi:58.0,cmf:0.12,adx:24,
+  kijun:62000,support:[60000,55000,50200],resist:[70000,77400,90000],
+  verdict:'2026-04-01 RSI 하락 다이버전스 발생 → 72,000원 전량 매도 완료(+43.4%). CMF 0.12 감소 추세. 구름대 상단 지지 중. 60,000원 지지+CMF 재상승+기준선 반등 시 재진입. 2026 EPS 흑자전환(5,980원). 도깨비 2028 초대형 모멘텀.',
+  action:'매수추적',
+  metrics:[{l:'EPS(26F)',v:'5,980원',s:'흑자전환'},{l:'EPS(28F)',v:'7,650원',s:'+437.9%'},{l:'PF(백테)',v:'2.42',s:'목표 달성'},{l:'승률(백테)',v:'74.8%',s:'CAGR 42.1%'}],
+  indicators:[
+    {n:'일목 구름대',v:'구름대 상단 지지',sig:'neutral',sc:60,d:'중장기 상승 추세 유지. 단기 기준선 이탈. 60,000원 구름대 상단 지지 여부가 핵심 재진입 신호.'},
+    {n:'CMF(20)',v:'+0.12',sig:'bull',sc:62,d:'자금 유입 지속이나 강도 약화 중. 분할 매도 구간. CMF 상승 재전환 시 재진입 트리거.'},
+    {n:'RSI(14)',v:'58.0',sig:'neutral',sc:58,d:'하락 중. 다이버전스 확인 후 매도 완료. 재진입 시 RSI 40~50 상승 반전 확인 필수.'},
+    {n:'ATR(14)',v:'4,200',sig:'neutral',sc:50,d:'상승 중(변동성 확대). ATR급증 구간 비중 40% 이하 축소. 손절 = 진입가 - ATR×1.5.'},
+    {n:'볼린저밴드',v:'중심선 이탈',sig:'bear',sc:40,d:'60,000원 하단 지지 확인 필요. 밴드 스퀴즈 후 방향성 분출 대기 중.'}
+  ],
+  consensus:[{y:'2025E',s:'3,805억',o:'-150억',e:'적자지속'},{y:'2026F',s:'9,674억',o:'4,536억',e:'흑자전환(EPS 5,980원)'},{y:'2027F',s:'5,400억',o:'1,040억',e:'-76.2%'},{y:'2028F',s:'1.25조',o:'5,800억',e:'EPS 7,650원(+437.9%)'}],
+  epsChart:{l:['25E','26F','27F','28F'],v:[-150,4536,1040,5800]},
+  news:[
+    {d:'2026-04-01',t:'RSI 하락 다이버전스 발생. 신고가 77,400원 후 72,000원 전량 매도. 수익률 +43.4%.',imp:'pos'},
+    {d:'2026-03-25',t:'CMF V자 반등+판매량 300만장 돌파. 50,200원 재진입 → 72,000원 청산(+43.4%).',imp:'pos'},
+    {d:'2026-03-19',t:'메타크리틱 78점 발표 하한가(-29%). Pre-event 매도(3/17, 64,500원)로 완벽 회피.',imp:'neg'},
+    {d:'2026-01-20',t:'출시 2개월 전 기관 수급 집중 52,000원 매수. 3/17 64,500원 매도 +24.0%.',imp:'pos'}
+  ],
+  pnl:{entry:null,dates:[],prices:[]}
+}
+];
+ 
+// ============================================================
+// STATE
+// ============================================================
+let selIdx = -1;
+let filterMode = 'ALL';
+let pnlChart = null;
+let consChart = null;
+ 
+// ============================================================
+// CLOCK
+// ============================================================
+function updateClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('ko-KR',{hour12:false});
+}
+setInterval(updateClock,1000);
+updateClock();
+ 
+function setSess(s){
+  document.getElementById('sb-am').classList.toggle('active',s==='AM');
+  document.getElementById('sb-pm').classList.toggle('active',s==='PM');
+}
+ 
+function setFilter(f){
+  filterMode = f;
+  document.querySelectorAll('.fb-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderGrid();
+}
+ 
+function refresh(){ renderGrid(); if(selIdx>=0) renderDetail(selIdx); }
+ 
+// ============================================================
+// SUMMARY STRIP
+// ============================================================
+function renderSummary(){
+  const buyCount = STOCKS.filter(s=>s.signal==='buy').length;
+  const watchCount = STOCKS.filter(s=>s.signal==='watch').length;
+  const posStocks = STOCKS.filter(s=>s.pnl.entry&&s.price>s.pnl.entry);
+  const avgPnl = STOCKS.filter(s=>s.pnl.entry).map(s=>((s.price-s.pnl.entry)/s.pnl.entry*100));
+  const mean = avgPnl.length ? (avgPnl.reduce((a,b)=>a+b,0)/avgPnl.length).toFixed(1) : '-';
+  const meanClass = parseFloat(mean)>=0?'g':'r';
+  document.getElementById('summary-strip').innerHTML = `
+    <div class="ss-item"><div class="ss-label">전체 종목</div><div class="ss-val">${STOCKS.length}</div></div>
+    <div class="ss-item"><div class="ss-label">매수 신호</div><div class="ss-val g">${buyCount}</div></div>
+    <div class="ss-item"><div class="ss-label">매수 추적</div><div class="ss-val a">${watchCount}</div></div>
+    <div class="ss-item"><div class="ss-label">진입 종목</div><div class="ss-val">${STOCKS.filter(s=>s.pnl.entry).length}</div></div>
+    <div class="ss-item"><div class="ss-label">평균 수익률</div><div class="ss-val ${meanClass}">${mean!=='-'?(parseFloat(mean)>=0?'+':'')+mean+'%':'-'}</div></div>
+    <div class="ss-item"><div class="ss-label">수익 중</div><div class="ss-val g">${posStocks.length}종목</div></div>
+  `;
+}
+ 
+// ============================================================
+// GRID
+// ============================================================
+function sigClass(s){return s==='buy'?'sig-buy':s==='sell'?'sig-sell':s==='watch'?'sig-watch':'sig-hold';}
+function badgeClass(s){return s==='buy'?'bg-buy':s==='sell'?'bg-sell':s==='watch'?'bg-watch':s==='hold'?'bg-hold':'bg-track';}
+function pnlPct(st){if(!st.pnl.entry)return null;return((st.price-st.pnl.entry)/st.pnl.entry*100).toFixed(1);}
+ 
+function renderGrid(){
+  renderSummary();
+  const grid = document.getElementById('stock-grid');
+  const filtered = filterMode==='ALL'?STOCKS:STOCKS.filter(s=>s.signal===filterMode||(filterMode==='hold'&&(s.signal==='hold'||s.action==='관망'||s.action==='보유')));
+  grid.innerHTML='';
+  filtered.forEach((st,fi)=>{
+    const i = STOCKS.indexOf(st);
+    const pnl = pnlPct(st);
+    const chgPos = st.change>=0;
+    const pnlPos = pnl!==null&&parseFloat(pnl)>=0;
+    const hasChart = st.pnl.prices&&st.pnl.prices.length>=2;
+    const div = document.createElement('div');
+    div.className = `sc ${sigClass(st.signal)}${selIdx===i?' sel':''}`;
+    div.onclick = ()=>selectStock(i);
+    div.innerHTML=`
+      <div class="sc-top">
+        <div class="sc-info"><div class="sc-code">${st.ticker} · ${st.sector}</div><div class="sc-name">${st.name}</div></div>
+        <span class="sc-badge ${badgeClass(st.signal)}">${st.badge}</span>
+      </div>
+      <div class="sc-price-row">
+        <span class="sc-price">${st.price.toLocaleString()}</span>
+        <span class="sc-chg ${chgPos?'pos':'neg'}">${chgPos?'+':''}${st.change}%</span>
+      </div>
+      <div class="sc-bottom">
+        <span class="sc-sector">CMF ${st.cmf>=0?'+':''}${st.cmf} · RSI ${st.rsi}</span>
+        <span class="sc-pnl ${pnl===null?'na':pnlPos?'pos':'neg'}">${pnl===null?'—':(pnlPos?'+':'')+pnl+'%'}</span>
+      </div>
+      ${hasChart?`<canvas class="sc-spark" id="sp${i}" height="28"></canvas>`:`<div style="height:28px;margin-top:6px;display:flex;align-items:center;font-size:9px;color:var(--tx2);">진입 대기</div>`}
+    `;
+    grid.appendChild(div);
+    if(hasChart){
+      requestAnimationFrame(()=>{
+        const c = document.getElementById('sp'+i);
+        if(!c)return;
+        const isUp = st.pnl.prices[st.pnl.prices.length-1]>=st.pnl.prices[0];
+        new Chart(c,{type:'line',data:{labels:st.pnl.dates,datasets:[{data:st.pnl.prices,borderColor:isUp?'#1fa870':'#e04545',borderWidth:1.5,pointRadius:0,tension:0.4,fill:false}]},options:{responsive:false,animation:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}});
+      });
+    }
+  });
+}
+ 
+// ============================================================
+// DETAIL
+// ============================================================
+function selectStock(i){
+  selIdx=i;
+  renderGrid();
+  renderDetail(i);
+  const dp = document.getElementById('detail-panel');
+  dp.classList.remove('empty');
+  dp.innerHTML = buildDetailHTML(STOCKS[i]);
+  switchTab('overview');
+}
+ 
+function buildDetailHTML(st){
+  return `<div class="dp-inner">
+    <div class="dp-hdr">
+      <button class="dp-close" onclick="closeDetail()">✕ 닫기</button>
+      <div class="dp-title">${st.name}</div>
+      <div class="dp-sub">${st.ticker} · ${st.sector}</div>
+    </div>
+    <div class="dp-tabs">
+      <button class="dt active" onclick="switchTab('overview')">종합판단</button>
+      <button class="dt" onclick="switchTab('indicators')">기술지표</button>
+      <button class="dt" onclick="switchTab('consensus')">컨센서스</button>
+      <button class="dt" onclick="switchTab('news')">뉴스</button>
+      <button class="dt" onclick="switchTab('pnl')">수익추적</button>
+    </div>
+    <div class="dp-body">
+      ${buildOverview(st)}
+      ${buildIndicators(st)}
+      ${buildConsensus(st)}
+      ${buildNews(st)}
+      ${buildPnl(st)}
+    </div>
+  </div>`;
+}
+ 
+function buildOverview(st){
+  const pnl = pnlPct(st);
+  const pnlPos = pnl!==null&&parseFloat(pnl)>=0;
+  const ac = {매수:'buy',매도:'sell',관망:'watch',보유:'hold',매수추적:'watch',분할매수:'buy',손절:'sell',익절:'hold'}[st.action]||'hold';
+  const pnlDisp = pnl!==null?` <span style="color:${pnlPos?'var(--green)':'var(--red)'};">(${pnlPos?'+':''}${pnl}%)</span>`:'';
+  const allL = [...st.support,...st.resist,st.price];
+  const minL=Math.min(...allL)*0.97,maxL=Math.max(...allL)*1.03;
+  const pct=v=>((v-minL)/(maxL-minL)*100).toFixed(1);
+  const supMarkers = st.support.map(v=>`<div class="lvl-marker" style="left:${pct(v)}%;background:var(--red);opacity:0.8;"></div><div class="lvl-marker-label" style="left:${pct(v)}%;color:var(--red);">${(v/1000).toFixed(0)}K</div>`).join('');
+  const resMarkers = st.resist.map(v=>`<div class="lvl-marker" style="left:${pct(v)}%;background:var(--green);opacity:0.8;"></div><div class="lvl-marker-label" style="left:${pct(v)}%;color:var(--green);">${(v/1000).toFixed(0)}K</div>`).join('');
+  const nowMarker = `<div class="lvl-marker" style="left:${pct(st.price)}%;background:var(--blue);width:2px;z-index:2;"></div><div style="position:absolute;left:${pct(st.price)}%;top:-16px;font-size:9px;color:var(--blue);transform:translateX(-50%);font-weight:700;">현재</div>`;
+  const stopLoss = st.pnl.entry ? Math.round(st.pnl.entry-2*st.atr).toLocaleString() : st.support[st.support.length-1].toLocaleString();
+  return `<div id="tab-overview" class="dp-tab-content">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+      <div style="font-size:20px;font-weight:700;">${st.price.toLocaleString()}<span style="font-size:12px;color:${st.change>=0?'var(--green)':'var(--red)'};margin-left:6px;">${st.change>=0?'+':''}${st.change}%</span></div>
+      <div style="font-size:11px;color:var(--tx2);">ATR ${st.atr.toLocaleString()} · ADX ${st.adx}</div>
+    </div>
+    <div class="dp-metrics">${st.metrics.map(m=>`<div class="dm"><div class="dm-l">${m.l}</div><div class="dm-v">${m.v}</div>${m.s?`<div class="dm-s">${m.s}</div>`:''}</div>`).join('')}</div>
+    <div class="verdict-box">
+      <div class="dps-label">최종 트레이딩 판단</div>
+      <div class="vb-action ${ac}">${st.action}${pnlDisp}</div>
+      <div class="vb-reason">${st.verdict}</div>
+      <div class="vb-levels">
+        <div class="vbl"><span class="vbl-l">손절:</span><span class="vbl-v r">${stopLoss}원</span></div>
+        <div class="vbl"><span class="vbl-l">1차저항:</span><span class="vbl-v g">${st.resist[0].toLocaleString()}원</span></div>
+        <div class="vbl"><span class="vbl-l">기준선:</span><span class="vbl-v">${st.kijun.toLocaleString()}원</span></div>
+      </div>
+    </div>
+    <div class="dps-label">지지/저항 레벨</div>
+    <div class="lvl-bar" style="margin-bottom:28px;">${supMarkers}${resMarkers}${nowMarker}</div>
+  </div>`;
+}
+ 
+function buildIndicators(st){
+  const rows = st.indicators.map(ind=>{
+    const bc = ind.sig==='bull'?'bf-g':ind.sig==='bear'?'bf-r':'bf-n';
+    return `<tr><td style="font-weight:600;font-size:11px;">${ind.n}</td><td>${ind.v}</td><td><span class="bar-w"><span class="bar-f ${bc}" style="width:${ind.sc}%;"></span></span></td><td style="color:var(--tx1);font-size:10px;">${ind.d}</td></tr>`;
+  }).join('');
+  return `<div id="tab-indicators" class="dp-tab-content" style="display:none;">
+    <div class="dps-label" style="margin-top:4px;">기술적 지표 상세</div>
+    <table class="ind-tbl"><tr><th>지표</th><th>현재값</th><th>강도</th><th>해설</th></tr>${rows}</table>
+  </div>`;
+}
+ 
+function buildConsensus(st){
+  const rows = st.consensus.map((r,ri)=>{
+    const eu=r.e.includes('+'),ed=r.e.includes('-');
+    return `<tr ${ri===0?'style="opacity:0.6;"':''}><td>${r.y}</td><td>${r.s}</td><td>${r.o}</td><td class="${eu?'cu':ed?'cd':''}">${r.e}</td></tr>`;
+  }).join('');
+  return `<div id="tab-consensus" class="dp-tab-content" style="display:none;">
+    <div class="dps-label" style="margin-top:4px;">실적 컨센서스 변동</div>
+    <table class="cons-tbl"><tr><th>연도</th><th>매출</th><th>영업이익</th><th>EPS변동</th></tr>${rows}</table>
+    <div class="ch-wrap"><canvas id="cons-chart"></canvas></div>
+  </div>`;
+}
+ 
+function buildNews(st){
+  const items = st.news.map(n=>`<div class="news-item"><div class="ni-date">${n.d}</div><div class="ni-title">${n.t}</div><span class="ni-tag ${n.imp==='pos'?'t-pos':n.imp==='neg'?'t-neg':'t-neu'}">${n.imp==='pos'?'긍정':n.imp==='neg'?'부정':'중립'}</span></div>`).join('');
+  return `<div id="tab-news" class="dp-tab-content" style="display:none;"><div class="dps-label" style="margin-top:4px;">최근 주요 뉴스</div>${items}</div>`;
+}
+ 
+function buildPnl(st){
+  const pnl = pnlPct(st);
+  const pnlPos = pnl!==null&&parseFloat(pnl)>=0;
+  const entryInfo = st.pnl.entry?`매수일 ${st.entryDate} @ ${st.pnl.entry.toLocaleString()}원 | 현재 ${pnlPos?'+':''}${pnl}%`:'매수 진입 대기 — 진입 신호 발생 시 추적 시작';
+  return `<div id="tab-pnl" class="dp-tab-content" style="display:none;">
+    <div class="dps-label" style="margin-top:4px;">매수 진입 이후 수익률</div>
+    <div class="pnl-wrap"><canvas id="pnl-chart"></canvas></div>
+    <div class="pnl-label">${entryInfo}</div>
+  </div>`;
+}
+ 
+function switchTab(tab){
+  document.querySelectorAll('.dp-tab-content').forEach(c=>c.style.display='none');
+  const el = document.getElementById('tab-'+tab);
+  if(el) el.style.display='block';
+  document.querySelectorAll('.dt').forEach((t,i)=>{
+    const tabs=['overview','indicators','consensus','news','pnl'];
+    t.classList.toggle('active',tabs[i]===tab);
+  });
+  if(tab==='consensus') renderConsChart();
+  if(tab==='pnl') renderPnlChartFn();
+}
+ 
+function renderConsChart(){
+  if(selIdx<0)return;
+  const st=STOCKS[selIdx];
+  const el=document.getElementById('cons-chart');
+  if(!el)return;
+  if(consChart)consChart.destroy();
+  consChart=new Chart(el,{
+    type:'bar',
+    data:{labels:st.epsChart.l,datasets:[{label:'영업이익(조)',data:st.epsChart.v,backgroundColor:st.epsChart.v.map(v=>v>=0?'rgba(31,168,112,0.7)':'rgba(224,69,69,0.7)'),borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6a6864',font:{size:10}}},y:{ticks:{color:'#6a6864',font:{size:10},callback:v=>v+'조'}}}}
+  });
+}
+ 
+function renderPnlChartFn(){
+  if(selIdx<0)return;
+  const st=STOCKS[selIdx];
+  const el=document.getElementById('pnl-chart');
+  if(!el)return;
+  if(pnlChart)pnlChart.destroy();
+  if(!st.pnl.entry||!st.pnl.prices.length){return;}
+  const pcts=st.pnl.prices.map(p=>parseFloat(((p-st.pnl.entry)/st.pnl.entry*100).toFixed(2)));
+  const last=pcts[pcts.length-1];
+  const col=last>=0?'#1fa870':'#e04545';
+  pnlChart=new Chart(el,{
+    type:'line',
+    data:{labels:st.pnl.dates,datasets:[
+      {data:pcts,borderColor:col,borderWidth:2,backgroundColor:last>=0?'rgba(31,168,112,0.08)':'rgba(224,69,69,0.08)',fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:col},
+      {data:st.pnl.dates.map(()=>0),borderColor:'rgba(100,100,100,0.3)',borderWidth:1,borderDash:[3,3],pointRadius:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y>0?'+':''}${c.parsed.y.toFixed(2)}%`}}},scales:{x:{ticks:{color:'#6a6864',font:{size:9}}},y:{ticks:{color:'#6a6864',font:{size:9},callback:v=>v+'%'}}}}
+  });
+}
+ 
+function closeDetail(){
+  selIdx=-1;
+  renderGrid();
+  const dp=document.getElementById('detail-panel');
+  dp.classList.add('empty');
+  dp.innerHTML='<div class="dp-placeholder">종목을 클릭하면<br>상세 분석이 표시됩니다</div>';
+}
+ 
+function renderDetail(i){ /* called after buildDetailHTML */ }
+ 
+// INIT
+renderGrid();
+</script>
+</body>
+</html>
