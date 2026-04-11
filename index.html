@@ -1,58 +1,15 @@
-// api/token.js - 한투 모의투자 전용 토큰 관리 (CommonJS)
-// 모의투자: https://openapivts.koreainvestment.com:29443
+# 환경변수 (절대 커밋 금지)
+.env
+.env.local
+.env.*.local
 
-const IS_REAL  = process.env.KIS_IS_REAL === 'true';
-const BASE_URL = IS_REAL
-  ? 'https://openapi.koreainvestment.com:9443'
-  : 'https://openapivts.koreainvestment.com:29443';  // 모의투자
+# Vercel
+.vercel
 
-// Vercel 인메모리 캐시 (warm 상태 재사용)
-let _cache = { token: null, expiresAt: 0 };
+# Node
+node_modules/
+npm-debug.log*
 
-async function getAccessToken() {
-  const now = Date.now();
-  if (_cache.token && _cache.expiresAt > now + 60_000) {
-    return _cache.token;
-  }
-  const res = await fetch(`${BASE_URL}/oauth2/tokenP`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      grant_type: 'client_credentials',
-      appkey:     process.env.KIS_APP_KEY,
-      appsecret:  process.env.KIS_APP_SECRET,
-    }),
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`TOKEN ${res.status}: ${txt.slice(0, 200)}`);
-  }
-  const data = await res.json();
-  if (!data.access_token) {
-    throw new Error(`TOKEN 발급 실패: ${JSON.stringify(data).slice(0, 200)}`);
-  }
-  _cache = {
-    token:     data.access_token,
-    expiresAt: now + (data.expires_in ?? 86400) * 1000,
-  };
-  console.log('[token] 새 토큰 발급:', new Date(_cache.expiresAt).toISOString());
-  return _cache.token;
-}
-
-module.exports = { getAccessToken, BASE_URL, IS_REAL };
-
-// GET /api/token  ← 상태 확인용
-module.exports.default = async function(req, res) {
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  try {
-    const token = await getAccessToken();
-    return res.status(200).json({
-      ok: true,
-      mode: IS_REAL ? '실전' : '모의투자',
-      expiresAt: new Date(_cache.expiresAt).toISOString(),
-      preview: token.slice(0, 12) + '…',
-    });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message });
-  }
-};
+# OS
+.DS_Store
+Thumbs.db
