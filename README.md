@@ -1,1 +1,15 @@
-코스피 종목별로 최적화 지표를 가지고 매매 전략을 수립하여 적용하였습니다. 26.4.4
+# 환경변수 (절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

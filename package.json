@@ -1,0 +1,14 @@
+# ────────────────────────────────────────────────
+# 한국투자증권 오픈API 환경변수
+# https://apiportal.koreainvestment.com
+# ────────────────────────────────────────────────
+
+# 발급받은 App Key / App Secret
+KIS_APP_KEY=PSxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+KIS_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# 계좌번호 (8자리-2자리, 예: 50012345-01)
+KIS_ACCOUNT_NO=50012345-01
+
+# 실전 여부: "true" = 실전투자, "false" = 모의투자
+KIS_IS_REAL=true
